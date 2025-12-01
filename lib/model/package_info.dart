@@ -1,8 +1,13 @@
+import 'package:json_annotation/json_annotation.dart';
+part 'package_info.g.dart';
+
+
 ///@Author jsji
 ///@Date 2025/10/11
 ///
 ///@Description
 
+@JsonSerializable()
 class PackageInfo {
   PackageInfo({
     this.appName = "",
@@ -19,21 +24,6 @@ class PackageInfo {
   int onlineVersionCode;
   int versionCode;
 
-  factory PackageInfo.fromJson(Map<String, dynamic> json) {
-    return PackageInfo(
-      appName: json['appName'],
-      packageName: json['packageName'],
-      versionName: json['versionName'],
-      versionCode: json['versionCode'],
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'appName': appName,
-      'packageName': packageName,
-      'versionName': versionName,
-      'versionCode': versionCode,
-    };
-  }
+  factory PackageInfo.fromJson(Map<String, dynamic> json) => _$PackageInfoFromJson(json);
+  Map<String, dynamic> toJson() => _$PackageInfoToJson(this);
 }

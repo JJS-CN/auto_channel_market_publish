@@ -9,19 +9,11 @@ import 'package:pointycastle/asymmetric/api.dart';
 ///
 ///@Description
 class XiaomiHelper {
-  static var _publicPem = '''
------BEGIN PUBLIC KEY-----
-MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDAX+S8xIjMtIvC3hDV1Pb9G0xe
-HKDP5C3yukb41kuvf+rVMTcSb4wxTWy7JlOMaRd6hWPUSNKskX+/aZin2FHlqJkA
-jP4SqNpSiG1le/0VYXmYRAtshm1DEcoCMyatwAoQU9jDtWu2wPSyDXL/sS5qMufp
-dzJ1cG1VKVrAvxiOfQIDAQAB
------END PUBLIC KEY-----''';
-  static var privateKey = "9x178ic4j01yzum1uraiv4zxurn119i93z6sulupr25254m7nf";
 
   // 长参数分段加密
-  static Future<String> encodeSIG(Map para) async {
+  static Future<String> encodeSIG(String publicPem,Map para) async {
     // 设置加密对象
-    RSAPublicKey publicKey = RSAKeyParser().parse(_publicPem) as RSAPublicKey;
+    RSAPublicKey publicKey = RSAKeyParser().parse(publicPem) as RSAPublicKey;
     final encrypter = Encrypter(RSA(publicKey: publicKey));
     // map转成json字符串
     final jsonStr = json.encode(para);

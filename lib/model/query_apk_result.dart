@@ -1,9 +1,12 @@
 import 'package:auto_channel_market_publish/model/package_info.dart';
+import 'package:json_annotation/json_annotation.dart';
 
+part 'query_apk_result.g.dart';
 ///@Author jsji
 ///@Date 2025/10/11
 ///
 ///@Description
+@JsonSerializable()
 class QueryApkResult {
   QueryApkResult({
     this.updateVersion = false,
@@ -22,21 +25,6 @@ class QueryApkResult {
   bool create;
   PackageInfo? packageInfo;
 
-  factory QueryApkResult.fromJson(Map<String, dynamic> json) {
-    return QueryApkResult(
-      updateVersion: json['updateVersion'],
-      updateInfo: json['updateInfo'],
-      create: json['create'],
-      packageInfo: PackageInfo.fromJson(json['packageInfo']),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'updateVersion': updateVersion,
-      'updateInfo': updateInfo,
-      'create': create,
-      'packageInfo': packageInfo?.toJson(),
-    };
-  }
+  factory QueryApkResult.fromJson(Map<String, dynamic> json) => _$QueryApkResultFromJson(json);
+  Map<String, dynamic> toJson() => _$QueryApkResultToJson(this);
 }
