@@ -8,7 +8,6 @@ part 'channel_config.g.dart';
 ///
 ///@Description 所有渠道所需配置
 
-
 @JsonSerializable()
 class ChannelConfigs {
   ChannelConfigs({required this.xiaomiConfig});
@@ -45,11 +44,30 @@ class XiaomiConfig extends BaseChannelConfig {
   factory XiaomiConfig.fromJson(Map<String, dynamic> json) => _$XiaomiConfigFromJson(json);
   Map<String, dynamic> toJson() => _$XiaomiConfigToJson(this);
 
-
   @override
   String toString() {
     return 'XiaomiConfig(packageName: $packageName, userName: $userName, publicPem: $publicPem, privateKey: $privateKey)';
   }
+}
+
+class HuaweiConfig extends BaseChannelConfig {
+  HuaweiConfig({
+    this.appId = "",
+    this.clientId = "",
+    this.clientSecret = "",
+    super.channelName = "华为",
+    super.channelEnum = ChannelEnum.huawei,
+    super.isEnable = false,
+    super.lastCheckSuccessTime = 0,
+    super.errorMessage = "",
+    super.queryApkResult,
+  });
+  String clientId;
+  String clientSecret;
+  String appId;
+
+  @override
+  bool get isComplete => clientId.isNotEmpty && clientSecret.isNotEmpty && appId.isNotEmpty;
 }
 
 abstract class BaseChannelConfig {
@@ -76,4 +94,4 @@ abstract class BaseChannelConfig {
   bool get isComplete;
 }
 
-enum ChannelEnum { xiaomi }
+enum ChannelEnum { xiaomi, huawei, honor }

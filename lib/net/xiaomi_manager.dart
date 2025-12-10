@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:auto_channel_market_publish/manager/channel_config_manager.dart';
 import 'package:auto_channel_market_publish/model/channel_config.dart';
 import 'package:auto_channel_market_publish/model/query_apk_result.dart';
 import 'package:auto_channel_market_publish/net/xiaomi_helper.dart';
@@ -30,7 +31,8 @@ class XiaomiManager {
   final _dio = Dio();
 
   ///查询apk配置
-  Future<QueryApkResult> queryApkConfig({required XiaomiConfig xiaomiConfig}) async {
+  Future<QueryApkResult> queryApkConfig({ XiaomiConfig? xiaomiConfig}) async {
+    xiaomiConfig ??= ChannelConfigManager().channelConfigs.xiaomiConfig;
     var requestData = {"packageName": xiaomiConfig.packageName, "userName": xiaomiConfig.userName};
     Map<String, dynamic> sigData = {
       "password": xiaomiConfig.privateKey,
