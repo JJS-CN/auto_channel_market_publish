@@ -6,6 +6,7 @@ import 'package:auto_channel_market_publish/manager/channel_config_manager.dart'
 import 'package:auto_channel_market_publish/model/channel_config.dart';
 import 'package:auto_channel_market_publish/net/honor_manager.dart';
 import 'package:auto_channel_market_publish/net/huawei_manager.dart';
+import 'package:auto_channel_market_publish/net/tencent_manager.dart';
 import 'package:auto_channel_market_publish/net/xiaomi_manager.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -210,7 +211,7 @@ class _MainScreenState extends State<MainScreen> {
               //   updateDesc: updateConfig.updateDesc,
               // );
               
-              HonorManager().test();
+              //TencentManager().test();
             },
             child: Text("立即更新"),
           ),
