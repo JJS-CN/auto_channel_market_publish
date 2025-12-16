@@ -2,19 +2,20 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:auto_channel_market_publish/manager/channel_config_manager.dart';
 import 'package:auto_channel_market_publish/model/channel_config.dart';
 import 'package:auto_channel_market_publish/model/query_apk_result.dart';
+import 'package:auto_channel_market_publish/net/basic_channel_manager.dart';
 import 'package:auto_channel_market_publish/net/xiaomi_helper.dart';
 import 'package:dio/dio.dart';
 import 'package:crypto/crypto.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 
 ///@Author jsji
 ///@Date 2025/10/11
 ///
 ///@Description
 
-class XiaomiManager {
+class XiaomiManager extends BasicChannelManager<XiaomiConfig> {
   factory XiaomiManager() => _instance;
   static final XiaomiManager _instance = XiaomiManager._internal();
 
@@ -25,22 +26,18 @@ class XiaomiManager {
     _dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
   }
 
-  StreamController<double> _publishProgressController = StreamController<double>.broadcast();
-  Stream<double> get publishProgressStream => _publishProgressController.stream;
-
   final _dio = Dio();
 
   ///查询apk配置
-  Future<QueryApkResult> queryApkConfig({ XiaomiConfig? xiaomiConfig}) async {
-    xiaomiConfig ??= ChannelConfigManager().channelConfigs.xiaomiConfig;
-    var requestData = {"packageName": xiaomiConfig.packageName, "userName": xiaomiConfig.userName};
+  Future<QueryApkResult> queryApkConfig() async {
+    var requestData = {"packageName": initConfig.packageName, "userName": initConfig.userName};
     Map<String, dynamic> sigData = {
-      "password": xiaomiConfig.privateKey,
+      "password": initConfig.privateKey,
       "sig": [
         {"name": "RequestData", "hash": md5.convert(utf8.encode(json.encode(requestData))).toString()},
       ],
     };
-    var encrypted = await XiaomiHelper.encodeSIG(xiaomiConfig.publicPem, sigData);
+    var encrypted = await XiaomiHelper.encodeSIG(initConfig.publicPem, sigData);
     var fromData = {"RequestData": json.encode(requestData), "SIG": encrypted};
     var result = await _dio.post("/dev/query", data: FormData.fromMap(fromData));
     return QueryApkResult.fromJson(result.data);
@@ -68,7 +65,6 @@ class XiaomiManager {
   ///[appName] 应用名称
   publish({
     required XiaomiSynchroType synchroType,
-    required XiaomiConfig xiaomiConfig,
     required String appName,
     String? iconPath,
     String? apkPath,
@@ -76,17 +72,17 @@ class XiaomiManager {
     String? updateDesc,
     List<String>? screenshotPaths,
   }) async {
-    XiaomiAppInfo appInfo = XiaomiAppInfo(appName: appName, packageName: xiaomiConfig.packageName);
+    XiaomiAppInfo appInfo = XiaomiAppInfo(appName: appName, packageName: initConfig.packageName);
     if (updateDesc != null) {
       appInfo.updateDesc = updateDesc;
     }
     var requestData = {
-      "userName": xiaomiConfig.userName,
+      "userName": initConfig.userName,
       "synchroType": synchroType.synchroType,
       "appInfo": appInfo.toJson(),
     };
     Map<String, dynamic> sigData = {
-      "password": xiaomiConfig.privateKey,
+      "password": initConfig.privateKey,
       "sig": [
         {"name": "RequestData", "hash": md5.convert(utf8.encode(json.encode(requestData))).toString()},
       ],
@@ -119,17 +115,47 @@ class XiaomiManager {
       }
     }
 
-    var encrypted = await XiaomiHelper.encodeSIG(xiaomiConfig.publicPem, sigData);
+    var encrypted = await XiaomiHelper.encodeSIG(initConfig.publicPem, sigData);
     fromData["SIG"] = encrypted;
     var result = await _dio.post(
       "/dev/push",
       data: FormData.fromMap(fromData),
       onSendProgress: (int sent, int total) {
-        _publishProgressController.add(sent ~/ total * 100);
+        print("xiaomi publish progress: $sent, $total  ${sent / total * 100}%");
       },
     );
     print(result.data.toString());
     return Future.value(true);
+  }
+
+  @override
+  Future<bool> checkChannelSuccess() async {
+    try {
+      await queryApkConfig();
+      initConfig.isSuccess = true;
+      return true;
+    } catch (e) {
+      initConfig.isSuccess = false;
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> startPublish(UpdateConfig updateConfig) async {
+    var apkPath =  initConfig.uploadApkInfo?.apkPath;
+    var apkInfo = await queryApkConfig();
+    if (!apkInfo.updateVersion) {
+      SmartDialog.showToast("应用版本不能更新", displayType: SmartToastType.onlyRefresh);
+      return false;
+    }
+    var result = await publish(
+      synchroType: XiaomiSynchroType.apkUpdate,
+      appName: apkInfo.packageInfo!.appName,
+      apkPath: apkPath,
+      updateDesc: updateConfig.updateDesc,
+    );
+
+    return true;
   }
 }
 

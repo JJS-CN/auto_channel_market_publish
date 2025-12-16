@@ -1,10 +1,12 @@
 import 'dart:io';
 
+import 'package:auto_channel_market_publish/model/channel_config.dart';
+import 'package:auto_channel_market_publish/net/basic_channel_manager.dart';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 
-class HonorManager {
+class HonorManager extends BasicChannelManager<HonorConfig> {
   factory HonorManager() => _instance;
   static final HonorManager _instance = HonorManager._internal();
   HonorManager._internal() {
@@ -61,9 +63,9 @@ class HonorManager {
     return 0;
   }
 
-  getAppInfo({required String clientId, required String clientSecret, required int appId}) async {
-    await _checkAccessToken(clientId: clientId, clientSecret: clientSecret);
-    var result = await _dio.get("/v1/publish/get-app-detail", queryParameters: {"appId": appId});
+  getAppInfo() async {
+    await _checkAccessToken(clientId: initConfig.clientId, clientSecret: initConfig.clientSecret);
+    var result = await _dio.get("/v1/publish/get-app-detail", queryParameters: {"appId": initConfig.appId});
     print(result.data.toString());
     //引用基础信息
     var data = result.data["data"];
@@ -243,83 +245,21 @@ class HonorManager {
     print(result.data.toString());
   }
 
-  test() {
-    // getAppId(
-    //   clientId: "86a171c5027045788fba550dfc4bd0fe",
-    //   clientSecret: "NH4gOwuRIq6I4b0UKZMUHNEgRNKTaGFp",
-    //   pkgName: "com.fungo.loveshow.tuhao",
-    // ).then((appId) {
-    //   print("then appId: $appId");
-    //   //104469644
-    // });
+  @override
+  Future<bool> checkChannelSuccess() async {
+    try {
+      await getAppInfo();
+      initConfig.isSuccess = true;
+      return true;
+    } catch (e) {
+      initConfig.isSuccess = false;
+      return false;
+    }
+  }
 
-    // getAppInfo(
-    //   clientId: "86a171c5027045788fba550dfc4bd0fe",
-    //   clientSecret: "NH4gOwuRIq6I4b0UKZMUHNEgRNKTaGFp",
-    //   appId: 104469644,
-    // );
-
-    // FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['apk']).then((value) async {
-    //   if (value != null) {
-    //     var file = value.files.first;
-    //     var filePath = file.path;
-    //     var fileName = file.name;
-    //     var fileSize = file.size;
-    //     var digest = await sha256.bind(File(filePath!).openRead()).first;
-    //     var fileSha256 = digest.toString();
-    //     print("fileSha256: $fileSha256");
-    //     uploadFile(
-    //       clientId: "86a171c5027045788fba550dfc4bd0fe",
-    //       clientSecret: "NH4gOwuRIq6I4b0UKZMUHNEgRNKTaGFp",
-    //       appId: 104469644,
-    //       filePath: filePath!,
-    //       fileType: 100,
-    //       fileName: fileName,
-    //       fileSize: fileSize,
-    //       fileSha256: fileSha256,
-    //     );
-    //   }
-    // });
-
-    // publishApp(
-    //   clientId: "86a171c5027045788fba550dfc4bd0fe",
-    //   clientSecret: "NH4gOwuRIq6I4b0UKZMUHNEgRNKTaGFp",
-    //   appId: 104469644,
-    //   releaseType: 1,
-    // );
-
-    // getAppAuditResult(
-    //   clientId: "86a171c5027045788fba550dfc4bd0fe",
-    //   clientSecret: "NH4gOwuRIq6I4b0UKZMUHNEgRNKTaGFp",
-    //   appId: 104469644,
-    //   releaseId: "1998678679697362944",
-    // );
-
-    //     updateLanguageInfo(
-    //       clientId: "86a171c5027045788fba550dfc4bd0fe",
-    //       clientSecret: "NH4gOwuRIq6I4b0UKZMUHNEgRNKTaGFp",
-    //       appId: 104469644,
-    //       languageId: "zh-CN",
-    //       appName: "小爱直播间",
-    //       intro: '''小爱直播 — 高颜值直播交友软件
-
-    // 附近高颜值主播才艺花样秀，惊艳视频直播，更多好玩有才艺的直播内容尽在小爱直播！
-    // 【超高颜值】
-    // 超多高颜值主播。甜心可爱、温婉淑女、风格百变，总有适合你的风格。【超多玩法】唱歌、跳舞、脱口秀、游戏、聊天互动应有尽有。还有映客、秀色、花椒直播、六间房、YY等高人气主播等你来直播交友。
-    // 【全民直播】
-    // 在线视频K歌、激烈PK排位赛。活动不停，守护你喜欢的主播，休闲娱乐的好去处！
-    // 【附近交友】
-    // 开启附近交友模式，发现身边有趣的人，邂逅心动的那个TA。
-    // 【炫酷礼物】
-    // 给心仪的人送奢华游轮、幸福摩天轮，一起徜徉在爱的海洋里！
-    // 【AI智能体爱妮兔】
-    // 免费使用免排队，提供更高效、智能的服务体验，助你轻松解决各类疑惑！
-
-    // 随时随地聊天交友，随心所欲看直播！就在小爱直播！
-    // 快来和人气主播直播互动、视频聊天吧！''',
-    //       briefIntro: "热情高颜值美女直播交友软件",
-    //       newFeature: "已知问题修复",
-    //     );
+  @override
+  Future<bool> startPublish(UpdateConfig updateConfig) async {
+    return true;
   }
 }
 

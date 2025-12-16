@@ -51,6 +51,7 @@ dependencies:
   toggle_switch: ^2.3.0
   shared_preferences: ^2.5.2
   file_picker: ^10.3.7
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

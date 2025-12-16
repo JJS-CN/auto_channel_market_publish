@@ -6,6 +6,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///@Description
 
 class SpManager {
+  static late SharedPreferences _sp;
+
+  static Future<void> launchInit() async {
+    _sp = await SharedPreferences.getInstance();
+  }
+
   static void setValue(String key, Object? value) {
     if (value is int) {
       setInt(key, value);
@@ -20,87 +26,59 @@ class SpManager {
     }
   }
 
-  static Future getValue<T>(String key, T defaultValue) async {
-    if (defaultValue is int) {
-      return getInt(key, defaultValue);
-    } else if (defaultValue is double) {
-      return getDouble(key, defaultValue);
-    } else if (defaultValue is bool) {
-      return getBool(key, defaultValue);
-    } else if (defaultValue is String) {
-      return getString(key, defaultValue);
-    } else if (defaultValue is List<String>) {
-      return getStringList(key);
-    }
+  static Future<bool> setInt(String key, int? value, [int defaultValue = 0]) async {
+    return _sp.setInt(key, value ?? defaultValue);
   }
 
-  static void setInt(String key, int? value, [int defaultValue = 0]) async {
-    var sp = await SharedPreferences.getInstance();
-    sp.setInt(key, value ?? defaultValue);
-  }
-
-  static Future<int> getInt(String key, [int defaultValue = 0]) async {
-    var sp = await SharedPreferences.getInstance();
-    return sp.getInt(key) ?? defaultValue;
+  static int getInt(String key, [int defaultValue = 0]) {
+    return _sp.getInt(key) ?? defaultValue;
   }
 
   static Future<bool> setBool(String key, bool? value, [bool defaultValue = false]) async {
-    var sp = await SharedPreferences.getInstance();
-    return sp.setBool(key, value ?? defaultValue);
+    return _sp.setBool(key, value ?? defaultValue);
   }
 
-  static Future<bool> getBool(String key, [bool defaultValue = false]) async {
-    var sp = await SharedPreferences.getInstance();
-    return sp.getBool(key) ?? defaultValue;
+  static bool getBool(String key, [bool defaultValue = false]) {
+    return _sp.getBool(key) ?? defaultValue;
   }
 
   static Future<bool> setDouble(String key, double? value, [double defaultValue = 0.0]) async {
-    var sp = await SharedPreferences.getInstance();
-    return sp.setDouble(key, value ?? defaultValue);
+    return _sp.setDouble(key, value ?? defaultValue);
   }
 
-  static Future<double> getDouble(String key, [double defaultValue = 0.0]) async {
-    var sp = await SharedPreferences.getInstance();
-    return sp.getDouble(key) ?? defaultValue;
+  static double getDouble(String key, [double defaultValue = 0.0]) {
+    return _sp.getDouble(key) ?? defaultValue;
   }
 
   static Future<bool> setString(String key, String? value, [String defaultValue = '']) async {
-    var sp = await SharedPreferences.getInstance();
-    return sp.setString(key, value ?? defaultValue);
+    return _sp.setString(key, value ?? defaultValue);
   }
 
-  static Future<String> getString(String key, [String defaultValue = ""]) async {
-    var sp = await SharedPreferences.getInstance();
-    return sp.getString(key) ?? defaultValue;
+  static String getString(String key, [String defaultValue = ""]) {
+    return _sp.getString(key) ?? defaultValue;
   }
 
   static Future<bool> setStringList(String key, List<String> value) async {
-    var sp = await SharedPreferences.getInstance();
-    return sp.setStringList(key, value);
+    return _sp.setStringList(key, value);
   }
 
-  static Future<List<String>> getStringList(String key) async {
-    var sp = await SharedPreferences.getInstance();
-    return sp.getStringList(key) ?? List.empty(growable: true);
+  static List<String> getStringList(String key)  {
+    return _sp.getStringList(key) ?? List.empty(growable: true);
   }
 
   static Future<bool> remove(String key) async {
-    var sp = await SharedPreferences.getInstance();
-    return sp.remove(key);
+    return _sp.remove(key);
   }
 
   static Future<bool> clearAll() async {
-    var sp = await SharedPreferences.getInstance();
-    return sp.clear();
+    return _sp.clear();
   }
 
   static Future<Set<String>> getKeys() async {
-    var sp = await SharedPreferences.getInstance();
-    return sp.getKeys();
+    return _sp.getKeys();
   }
 
   static Future<bool> containsKey(String key) async {
-    var sp = await SharedPreferences.getInstance();
-    return sp.containsKey(key);
+    return _sp.containsKey(key);
   }
 }

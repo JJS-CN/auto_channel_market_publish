@@ -1,4 +1,7 @@
+import 'package:auto_channel_market_publish/manager/sp_manager.dart';
+import 'package:auto_channel_market_publish/model/channel_config.dart';
 import 'package:auto_channel_market_publish/screen/edit_channel_config_screen.dart';
+import 'package:auto_channel_market_publish/screen/edit_project_config_screen.dart';
 import 'package:auto_channel_market_publish/screen/main_screen.dart';
 import 'package:auto_channel_market_publish/screen/splash_screen.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +12,7 @@ import 'const/screen_const.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  SpManager.launchInit();
   runApp(MyApp());
 }
 
@@ -46,7 +50,18 @@ class MyApp extends StatelessWidget {
       GoRoute(
         path: ScreenConst.editChannelConfig,
         builder: (BuildContext context, GoRouterState state) {
+          
           return EditChannelConfigScreen();
+        },
+      ),
+      GoRoute(
+        path: ScreenConst.editProjectConfig,
+        builder: (BuildContext context, GoRouterState state) {
+          ProjectConfig? projectConfig;
+          if (state.extra != null) {
+            projectConfig = state.extra as ProjectConfig;
+          }
+          return EditProjectConfigScreen(projectConfig: projectConfig);
         },
       ),
     ],

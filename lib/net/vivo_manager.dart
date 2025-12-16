@@ -1,0 +1,129 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:ui';
+
+import 'package:auto_channel_market_publish/model/channel_config.dart';
+import 'package:auto_channel_market_publish/net/basic_channel_manager.dart';
+import 'package:auto_channel_market_publish/net/interceptor/interceptor_vivo.dart';
+import 'package:auto_channel_market_publish/screen/main_screen.dart';
+import 'package:crypto/crypto.dart';
+import 'package:dio/dio.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
+
+class VivoManager extends BasicChannelManager<VivoConfig> {
+  factory VivoManager() => _instance;
+  static final VivoManager _instance = VivoManager._internal();
+  VivoManager._internal() {
+    //_dio.options.baseUrl = "https://sandbox-developer-api.vivo.com.cn/router/rest";
+    _dio.options.baseUrl = "https://developer-api.vivo.com.cn/router/rest";
+    _dio.options.contentType = "application/x-www-form-urlencoded;charset=UTF-8";
+    _dio.interceptors.add(VivoInterceptor());
+    _dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
+  }
+  final _dio = Dio();
+
+  Future<Map<String, dynamic>> queryAppInfo() async {
+    _dio.options.contentType = "application/x-www-form-urlencoded;charset=UTF-8";
+    var result = await _dio.post(
+      "",
+      data: {"method": "app.query.details", "packageName": initConfig.packageName},
+    );
+    var data = result.data;
+    int versionCode = int.parse(data["versionCode"]);
+    String versionName = data["versionName"];
+    //上架状态 0:待上架 1:已上架 2:已下架
+    int saleStatus = data["saleStatus"];
+    //审核状态 1:草稿 2:审核中 3:审核通过 4:审核不通过 5:撤销审核
+    int status = data["status"];
+    //审核不通过原因
+    String unPassReason = data["unPassReason"] ?? "";
+    print("VivoManager queryAppInfo result: $versionCode, $versionName, $saleStatus, $status, $unPassReason");
+    return result.data;
+  }
+
+  ///上传文件
+  uploadFile({required String filePath}) async {
+    var digest = await compute(md5.convert, File(filePath).readAsBytesSync());
+    var fileMd5 = digest.toString();
+    _dio.options.contentType = "multipart/form-data";
+    var result = await _dio.post(
+      "",
+      data: FormData.fromMap({
+        "method": "app.upload.apk.app",
+        "packageName": initConfig.packageName,
+        "file": MultipartFile.fromFileSync(filePath),
+        "fileMd5": fileMd5,
+      }),
+      onSendProgress: (int sent, int total) {
+        print("uploadFile progress: $sent, $total  ${sent / total * 100}%");
+      },
+    );
+    var data = result.data;
+    data["versionCode"] = int.parse(data["versionCode"]);
+    return data;
+  }
+
+  ///发布应用
+  ///[onlineType] 1:立即发布 2:定时发布
+  ///[serialnumber] 文件上传序列号
+  publishApp({
+    required String serialnumber,
+    required String fileMd5,
+    required int versionCode,
+    String? updateDesc,
+    int onlineType = 1,
+  }) async {
+    _dio.options.contentType = "application/x-www-form-urlencoded;charset=UTF-8";
+    var result = await _dio.post(
+      "",
+      data: {
+        "method": "app.sync.update.app",
+        "packageName": initConfig.packageName,
+        "apk": serialnumber,
+        "fileMd5": fileMd5,
+        "versionCode": versionCode,
+        "onlineType": onlineType,
+        "updateDesc": updateDesc,
+      },
+    );
+    print("VivoManager publishApp success");
+  }
+
+  @override
+  Future<bool> checkChannelSuccess() async {
+    try {
+      await queryAppInfo();
+      initConfig.isSuccess = true;
+      return true;
+    } catch (e) {
+      initConfig.isSuccess = false;
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> startPublish(UpdateConfig updateConfig) async {
+    var apkPath = initConfig.uploadApkInfo?.apkPath;
+
+    var appInfo = await queryAppInfo();
+    var status = appInfo["status"];
+    if (status == 2) {
+      ///审核中
+      SmartDialog.showToast("审核中", displayType: SmartToastType.onlyRefresh);
+      return false;
+    }
+    var uploadData = await uploadFile(filePath: apkPath!);
+    var serialnumber = uploadData["serialnumber"];
+    var versionCode = uploadData["versionCode"];
+    var fileMd5 = uploadData["fileMd5"];
+    var result = await publishApp(
+      serialnumber: serialnumber,
+      fileMd5: fileMd5,
+      versionCode: versionCode,
+      updateDesc: updateConfig.updateDesc,
+    );
+    return true;
+  }
+}

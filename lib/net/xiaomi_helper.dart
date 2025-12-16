@@ -9,9 +9,9 @@ import 'package:pointycastle/asymmetric/api.dart';
 ///
 ///@Description
 class XiaomiHelper {
-
-  // 长参数分段加密
-  static Future<String> encodeSIG(String publicPem,Map para) async {
+  ///加密签名
+  ///[publicPem] public证书, 需要将小米下载的cer证书转换为pem格式(可以由ai或者在线转换工具转换)
+  static Future<String> encodeSIG(String publicPem, Map para) async {
     // 设置加密对象
     RSAPublicKey publicKey = RSAKeyParser().parse(publicPem) as RSAPublicKey;
     final encrypter = Encrypter(RSA(publicKey: publicKey));
@@ -39,9 +39,7 @@ class XiaomiHelper {
       totalByts.addAll(encrypter.encryptBytes(item).bytes);
     }
     // 加密后的字节数组转换成base64编码并返回
-    return totalByts
-        .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
-        .join('');
+    return totalByts.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join('');
   }
 }
 

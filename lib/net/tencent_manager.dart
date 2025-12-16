@@ -1,13 +1,17 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:auto_channel_market_publish/model/channel_config.dart';
+import 'package:auto_channel_market_publish/net/basic_channel_manager.dart';
+import 'package:auto_channel_market_publish/screen/main_screen.dart';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 
 ///腾讯应用宝管理类
-class TencentManager {
+class TencentManager extends BasicChannelManager<TencentConfig> {
   factory TencentManager() => _instance;
   static final TencentManager _instance = TencentManager._internal();
   TencentManager._internal() {
@@ -17,12 +21,13 @@ class TencentManager {
     _dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
   }
   final _dio = Dio();
-  static String userId = "10165064";
-  static String secretKey = "128aa2c66f994c9f81c34e632d9027da";
 
   ///查询应用配置
-  queryApkConfig({required String pkg_name, required String app_id}) async {
-    var result = await _dio.post("/query_app_detail", data: {"pkg_name": pkg_name, "app_id": app_id});
+  queryApkConfig() async {
+    var result = await _dio.post(
+      "/query_app_detail",
+      data: {"pkg_name": initConfig.packageName, "app_id": initConfig.appId},
+    );
     print("TencentManager queryApkConfig: ${result.data}");
     return result.data;
   }
@@ -48,16 +53,14 @@ class TencentManager {
 
   ///上传文件
   Future<Map<String, dynamic>> uploadFile({
-    required String pkg_name,
-    required String app_id,
     required String file_name,
     required String file_type,
     required String file_path,
     required String file_md5,
   }) async {
     var upload_options = await _getUploadOptions(
-      pkg_name: pkg_name,
-      app_id: app_id,
+      pkg_name: initConfig.packageName,
+      app_id: initConfig.appId,
       file_name: file_name,
       file_type: file_type,
     );
@@ -82,8 +85,6 @@ class TencentManager {
   ///[feature] 版本特性说明
   ///[deploy_type] 审核通过后的发布类型（1:审核通过后立即发布，2:定时发布）
   publishApp({
-    required String pkg_name,
-    required String app_id,
     String? apk32_file_serial_number,
     String? apk32_file_md5,
     String? feature,
@@ -92,8 +93,8 @@ class TencentManager {
     var result = await _dio.post(
       "/update_app",
       data: {
-        "pkg_name": pkg_name,
-        "app_id": app_id,
+        "pkg_name": initConfig.packageName,
+        "app_id": initConfig.appId,
         "apk32_file_serial_number": apk32_file_serial_number,
         "apk32_file_md5": apk32_file_md5,
         "feature": feature,
@@ -104,48 +105,61 @@ class TencentManager {
     return result.data;
   }
 
-  Future<void> test() async {
-    print("TencentManager test");
-    // queryApkConfig(pkg_name: "com.fungo.loveshow.tuhao", app_id: "1106189646");
+  queryApkUpdateStatus() async {
+    var result = await _dio.post(
+      "/query_app_update_status",
+      data: {"pkg_name": initConfig.packageName, "app_id": initConfig.appId},
+    );
+    print("TencentManager queryApkUpdateStatus result: ${result.data}");
+    //audit_status 审核状态（1:审核中,2:审核驳回,3:审核通过,8:开发者主动撤销）
+    //audit_reason 审核驳回原因
+    return result.data;
+  }
 
-    FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['apk']).then((value) async {
-      if (value != null) {
-        var file = value.files.first;
-        var filePath = file.path;
-        var fileName = file.name;
+  @override
+  Future<bool> checkChannelSuccess() async {
+    try {
+      await queryApkConfig();
+      initConfig.isSuccess = true;
+      return true;
+    } catch (e) {
+      initConfig.isSuccess = false;
+      return false;
+    }
+  }
 
-        ///计算文件md5,异步
-        ///使用compute进行异步计算
-        var fileMd5 = await compute(md5.convert, File(filePath!).readAsBytesSync());
-        uploadFile(
-              pkg_name: "com.fungo.loveshow.tuhao",
-              app_id: "1106189646",
-              file_name: fileName,
-              file_type: "apk",
-              file_path: filePath,
-              file_md5: fileMd5.toString(),
-            )
-            .then((upload_options) {
-              print("TencentManager uploadFile result: $upload_options");
-              publishApp(
-                pkg_name: "com.fungo.loveshow.tuhao",
-                app_id: "1106189646",
-                apk32_file_serial_number: upload_options["serial_number"],
-                apk32_file_md5: upload_options["file_md5"],
-              );
-            })
-            .then((result) {
-              print("TencentManager publishApp result: $result");
-            });
-      }
-    });
+  @override
+  Future<bool> startPublish(UpdateConfig updateConfig) async {
+    var updateStatus = await queryApkUpdateStatus();
+    if (updateStatus["audit_status"] == 1) {
+      SmartDialog.showToast("审核中", displayType: SmartToastType.onlyRefresh);
+      return false;
+    }
+    var filePath = initConfig.uploadApkInfo?.apkPath;
+    var app_info = await queryApkConfig();
+    var apkFIle = File(filePath!);
+    var fileName = filePath.split("/").last;
+    var fileMd5 = (await compute(md5.convert, File(filePath).readAsBytesSync())).toString();
+    var upload_options = await uploadFile(
+      file_name: fileName,
+      file_type: "apk",
+      file_path: filePath,
+      file_md5: fileMd5,
+    );
+    var result = await publishApp(
+      apk32_file_serial_number: upload_options["serial_number"],
+      apk32_file_md5: upload_options["file_md5"],
+      feature: updateConfig.updateDesc,
+      deploy_type: 1,
+    );
+    return true;
   }
 }
 
 class TencentInterceptor extends Interceptor {
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    super.onRequest(options, handler);
+    //super.onRequest(options, handler);
 
     //当前秒
     var now = DateTime.now().millisecondsSinceEpoch;
@@ -153,13 +167,9 @@ class TencentInterceptor extends Interceptor {
 
     var requestData = <String, dynamic>{};
     requestData["timestamp"] = timestamp.toString();
-    requestData["user_id"] = TencentManager.userId;
+    requestData["user_id"] = TencentManager().initConfig.userId;
     if (options.data != null) {
-      options.data.forEach((key, value) {
-        if (value != null) {
-          requestData[key] = value;
-        }
-      });
+      requestData.addAll(options.data);
     }
     //按照ASCII升序排序
     var sortedRequestData = requestData.entries.toList();
@@ -167,16 +177,18 @@ class TencentInterceptor extends Interceptor {
     //开始进行签名计算
     String signString = "";
     sortedRequestData.forEach((entry) {
-      signString += "${entry.key}=${entry.value}&";
+      if (entry.value != null) {
+        signString += "${entry.key}=${entry.value}&";
+      }
     });
     //去掉最后一个&
     signString = signString.substring(0, signString.length - 1);
     //进行HmacSHA256计算
-    var hmacSHA256 = Hmac(sha256, utf8.encode(TencentManager.secretKey));
+    var hmacSHA256 = Hmac(sha256, utf8.encode(TencentManager().initConfig.secretKey));
     var sign = hmacSHA256.convert(utf8.encode(signString));
     requestData["sign"] = sign.toString();
     options.data = requestData;
-    //handler.next(options);
+    handler.next(options);
   }
 
   @override

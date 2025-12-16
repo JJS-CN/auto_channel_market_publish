@@ -1,9 +1,13 @@
 import 'dart:io';
 
+import 'package:auto_channel_market_publish/model/channel_config.dart';
+import 'package:auto_channel_market_publish/net/basic_channel_manager.dart';
+import 'package:auto_channel_market_publish/screen/main_screen.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 
-class HuaweiManager {
+class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
   factory HuaweiManager() => _instance;
   static final HuaweiManager _instance = HuaweiManager._internal();
   HuaweiManager._internal() {
@@ -16,24 +20,31 @@ class HuaweiManager {
   final _dio = Dio();
 
   ///获取token
-  getToken({required String clientId, required String clientSecret}) async {
-    var data = {"client_id": clientId, "client_secret": clientSecret, "grant_type": "client_credentials"};
-    var result = await _dio.post("/oauth2/v1/token", data: data);
+  getToken() async {
+    var data = {
+      "client_id": initConfig.clientId,
+      "client_secret": initConfig.clientSecret,
+      "grant_type": "client_credentials",
+    };
+    var _tempDio = Dio();
+    _tempDio.options.contentType = "application/json;charset=UTF-8";
+    _tempDio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
+    var result = await _tempDio.post("https://connect-api.cloud.huawei.com/api/oauth2/v1/token", data: data);
     print(result.data.toString());
     //{"access_token":"eyJraWQiOiJJbnBuMjNUaUJZbnJCb1RiYzJwSDhMaHdTMFdwUUFLViIsInR5cCI6IkpXVCIsImFsZyI6IkhTMjU2In0.eyJzdWIiOiIxNDUxNTQyMzM1MTY1ODU2MDY0IiwiZG4iOjEsImNsaWVudF90eXBlIjoxLCJleHAiOjE3NjQ3NTY2NzIsImlhdCI6MTc2NDU4Mzg3Mn0.xtwd7XoeJGd2mDyOrndLre5o219bh4yB77lKyI0km9I","expires_in":172799}
     var accessToken = result.data["access_token"];
     var expiresIn = result.data["expires_in"];
     var now = DateTime.now();
     var expiresAt = now.add(Duration(seconds: expiresIn));
+    initConfig.accessToken = accessToken;
+    initConfig.expiresAt = expiresAt.millisecondsSinceEpoch;
     print("accessToken: $accessToken, expiresAt: $expiresAt");
     return result.data;
   }
 
-  ///查询应用信息
-  queryApkInfo({required String clientId, required String accessToken, required String appId}) async {
-    _dio.options.headers["client_id"] = clientId;
-    _dio.options.headers["Authorization"] = "Bearer $accessToken";
-    var result = await _dio.get("/publish/v2/app-info", queryParameters: {"appId": appId});
+  ///查询应用信息 appid可以直接从后台获取
+  queryApkInfo() async {
+    var result = await _dio.get("/publish/v2/app-info", queryParameters: {"appId": initConfig.appId});
     //审核状态
     var appInfo = result.data["appInfo"];
     var releaseState = HuaweiReleaseState.fromValue(appInfo["releaseState"]);
@@ -44,22 +55,30 @@ class HuaweiManager {
     var onShelfVersionCode = appInfo["onShelfVersionCode"];
     //审核意见
     var auditOpinion = result.data["auditInfo"]["auditOpinion"];
-    print("releaseState: $releaseState, auditOpinion: $auditOpinion");
+    return {
+      "releaseState": releaseState,
+      "updateTime": updateTime,
+      "versionNumber": versionNumber,
+      "versionCode": versionCode,
+      "onShelfVersionNumber": onShelfVersionNumber,
+      "onShelfVersionCode": onShelfVersionCode,
+      "auditOpinion": auditOpinion,
+    };
   }
 
   ///更新应用语言信息
   publishLanguageInfo({
-    required String clientId,
-    required String accessToken,
-    required String appId,
     int releaseType = 1,
     String lang = "zh-CN",
     String? appDesc,
     String? newFeatures,
     String? briefInfo,
   }) async {
-    _dio.options.headers["client_id"] = clientId;
-    _dio.options.headers["Authorization"] = "Bearer $accessToken";
+    if ((appDesc == null || appDesc.isEmpty) &&
+        (newFeatures == null || newFeatures.isEmpty) &&
+        (briefInfo == null || briefInfo.isEmpty)) {
+      return;
+    }
     var data = {"lang": lang};
     if (appDesc != null) {
       data["appDesc"] = appDesc;
@@ -73,7 +92,7 @@ class HuaweiManager {
 
     var result = await _dio.put(
       "/publish/v2/app-language-info",
-      queryParameters: {"releaseType": releaseType, "appId": appId},
+      queryParameters: {"releaseType": releaseType, "appId": initConfig.appId},
       data: data,
     );
     print(result.data.toString());
@@ -81,17 +100,12 @@ class HuaweiManager {
 
   ///获取上传链接
   Future<HuaweiUploadUrlOptions> getUploadOptions({
-    required String clientId,
-    required String accessToken,
-    required String appId,
     required String fileName,
     required int contentLength,
   }) async {
-    _dio.options.headers["client_id"] = clientId;
-    _dio.options.headers["Authorization"] = "Bearer $accessToken";
     var result = await _dio.get(
       "/publish/v2/upload-url/for-obs",
-      queryParameters: {"appId": appId, "fileName": fileName, "contentLength": contentLength},
+      queryParameters: {"appId": initConfig.appId, "fileName": fileName, "contentLength": contentLength},
     );
     var urlInfo = result.data["urlInfo"];
     String url = urlInfo["url"];
@@ -105,24 +119,19 @@ class HuaweiManager {
   }
 
   /// 执行文件上传
-  Future<void> uploadFile({
-    required String filePath,
-    required String url,
-    required int contentLength,
-    required String clientId,
-    required String accessToken,
-    required Map<String, dynamic> headers,
-  }) async {
-    print("uploadFile: $filePath, $url, $headers");
+  Future<void> uploadFile({required String filePath}) async {
+    var fileName = File(filePath).path.split("/").last;
+    var contentLength = File(filePath).lengthSync();
+    var uploadOptions = await getUploadOptions(fileName: fileName, contentLength: contentLength);
     var tempDio = Dio();
     tempDio.interceptors.add(LogInterceptor(requestBody: false, responseBody: true));
     tempDio.options.contentType = "application/octet-stream";
-    headers.forEach((key, value) {
+    uploadOptions.headers.forEach((key, value) {
       tempDio.options.headers[key] = value;
     });
-    tempDio.options.headers["Content-Length"] = contentLength;
+    tempDio.options.headers["Content-Length"] = File(filePath).lengthSync();
     var result = await tempDio.put(
-      url,
+      uploadOptions.url,
       data: File(filePath).openRead(),
       onSendProgress: (int sent, int total) {
         print("uploadFile progress: $sent, $total  ${sent / total * 100}%");
@@ -132,19 +141,14 @@ class HuaweiManager {
   }
 
   publishAppFileInfo({
-    required String clientId,
-    required String accessToken,
-    required String appId,
     int releaseType = 1,
     required int fileType,
     required String fileName,
     required String fileDestUrl,
   }) async {
-    _dio.options.headers["client_id"] = clientId;
-    _dio.options.headers["Authorization"] = "Bearer $accessToken";
     var result = await _dio.put(
       "/publish/v2/app-file-info",
-      queryParameters: {"releaseType": releaseType, "appId": appId},
+      queryParameters: {"releaseType": releaseType, "appId": initConfig.appId},
       data: {
         "fileType": fileType,
         "files": [
@@ -157,93 +161,63 @@ class HuaweiManager {
     print(result.data.toString());
   }
 
-  publishApp({
-    required String clientId,
-    required String accessToken,
-    required String appId,
-    int releaseType = 1,
-  }) async {
-    _dio.options.headers["client_id"] = clientId;
-    _dio.options.headers["Authorization"] = "Bearer $accessToken";
+  publishApp({int releaseType = 1}) async {
+    _dio.options.headers["client_id"] = initConfig.clientId;
+    _dio.options.headers["Authorization"] = "Bearer ${initConfig.accessToken}";
     var result = await _dio.post(
       "/publish/v2/app-submit",
-      queryParameters: {"releaseType": releaseType, "appId": appId},
+      queryParameters: {"releaseType": releaseType, "appId": initConfig.appId},
     );
     print(result.data.toString());
   }
 
-  test() {
-    // HuaweiManager().getToken(
-    //   clientId: "1451542335165856064",
-    //   clientSecret: "92CD75915E460511DDE91A56C1864BAF4EFE0C014582491093DFD06771EE70DD",
-    // );
+  @override
+  Future<bool> checkChannelSuccess() async {
+    try {
+      await queryApkInfo();
+      initConfig.isSuccess = true;
+      return true;
+    } catch (e) {
+      initConfig.isSuccess = false;
+      return false;
+    }
+  }
 
-    // HuaweiManager().queryApkInfo(
-    //   clientId: "1451542335165856064",
-    //   accessToken:
-    //       "eyJraWQiOiJJbnBuMjNUaUJZbnJCb1RiYzJwSDhMaHdTMFdwUUFLViIsInR5cCI6IkpXVCIsImFsZyI6IkhTMjU2In0.eyJzdWIiOiIxNDUxNTQyMzM1MTY1ODU2MDY0IiwiZG4iOjEsImNsaWVudF90eXBlIjoxLCJleHAiOjE3NjQ3NTY5NDIsImlhdCI6MTc2NDU4NDE0Mn0.liJVf1OIkZg715sJn0a9s0UkyTA7-1rDwFgISk4Vj7E",
-    //   appId: "100016277",
-    // );
+  @override
+  Future<bool> startPublish(UpdateConfig updateConfig) async {
+    publishLanguageInfo(appDesc: updateConfig.updateDesc);
+    var filePath = initConfig.uploadApkInfo?.apkPath;
+    var appInfo = await queryApkInfo();
+    if (appInfo["releaseState"] == HuaweiReleaseState.audit ||
+        appInfo["releaseState"] == HuaweiReleaseState.upgradeAudit) {
+      SmartDialog.showToast("审核中", displayType: SmartToastType.onlyRefresh);
+      return false;
+    }
 
-    // HuaweiManager().publishLanguageInfo(
-    //   clientId: "1451542335165856064",
-    //   accessToken:
-    //       "eyJraWQiOiJJbnBuMjNUaUJZbnJCb1RiYzJwSDhMaHdTMFdwUUFLViIsInR5cCI6IkpXVCIsImFsZyI6IkhTMjU2In0.eyJzdWIiOiIxNDUxNTQyMzM1MTY1ODU2MDY0IiwiZG4iOjEsImNsaWVudF90eXBlIjoxLCJleHAiOjE3NjQ3NTY5NDIsImlhdCI6MTc2NDU4NDE0Mn0.liJVf1OIkZg715sJn0a9s0UkyTA7-1rDwFgISk4Vj7E",
-    //   appId: "100016277",
-    //   newFeatures: "已知问题修复",
-    // );
+    var uploadResult = await uploadFile(filePath: filePath!);
+    var publishResult = await publishApp(releaseType: 1);
 
-    // FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['apk']).then((value) {
-    //   if (value != null) {
-    //     var file = value.files.first;
-    //     var fileName = file.name;
-    //     var contentLength = file.size;
-    //     HuaweiManager()
-    //         .getUploadOptions(
-    //           clientId: "1451542335165856064",
-    //           accessToken:
-    //               "eyJraWQiOiJJbnBuMjNUaUJZbnJCb1RiYzJwSDhMaHdTMFdwUUFLViIsInR5cCI6IkpXVCIsImFsZyI6IkhTMjU2In0.eyJzdWIiOiIxNDUxNTQyMzM1MTY1ODU2MDY0IiwiZG4iOjEsImNsaWVudF90eXBlIjoxLCJleHAiOjE3NjQ3NTY5NDIsImlhdCI6MTc2NDU4NDE0Mn0.liJVf1OIkZg715sJn0a9s0UkyTA7-1rDwFgISk4Vj7E",
-    //           appId: "100016277",
-    //           fileName: fileName,
-    //           contentLength: contentLength,
-    //         )
-    //         .then((value) {
-    //           var url = value.url;
-    //           var method = value.method;
-    //           var headers = value.headers;
-    //           HuaweiManager().uploadFile(
-    //             clientId: "1451542335165856064",
-    //             accessToken:
-    //                 "eyJraWQiOiJJbnBuMjNUaUJZbnJCb1RiYzJwSDhMaHdTMFdwUUFLViIsInR5cCI6IkpXVCIsImFsZyI6IkhTMjU2In0.eyJzdWIiOiIxNDUxNTQyMzM1MTY1ODU2MDY0IiwiZG4iOjEsImNsaWVudF90eXBlIjoxLCJleHAiOjE3NjQ3NTY5NDIsImlhdCI6MTc2NDU4NDE0Mn0.liJVf1OIkZg715sJn0a9s0UkyTA7-1rDwFgISk4Vj7E",
-    //             filePath: file.path!,
-    //             url: url,
-    //             contentLength: contentLength,
-    //             headers: headers,
-    //           );
-    //         });
-    //   }
-    // });
-
-    // HuaweiManager().publishAppFileInfo(
-    //   clientId: "1451542335165856064",
-    //   accessToken:
-    //       "eyJraWQiOiJJbnBuMjNUaUJZbnJCb1RiYzJwSDhMaHdTMFdwUUFLViIsInR5cCI6IkpXVCIsImFsZyI6IkhTMjU2In0.eyJzdWIiOiIxNDUxNTQyMzM1MTY1ODU2MDY0IiwiZG4iOjEsImNsaWVudF90eXBlIjoxLCJleHAiOjE3NjQ3NTY5NDIsImlhdCI6MTc2NDU4NDE0Mn0.liJVf1OIkZg715sJn0a9s0UkyTA7-1rDwFgISk4Vj7E",
-    //   appId: "100016277",
-    //   fileType: 5,
-    //   fileDestUrl: "CN/2025120112/1764591598792-b567295a-22b8-44ae-b55c-b9928ee67fde.apk",
-    //   fileName: "1764591598792-b567295a-22b8-44ae-b55c-b9928ee67fde.apk",
-    // );
-
-    HuaweiManager().publishApp(
-      clientId: "1451542335165856064",
-      accessToken:
-          "eyJraWQiOiJJbnBuMjNUaUJZbnJCb1RiYzJwSDhMaHdTMFdwUUFLViIsInR5cCI6IkpXVCIsImFsZyI6IkhTMjU2In0.eyJzdWIiOiIxNDUxNTQyMzM1MTY1ODU2MDY0IiwiZG4iOjEsImNsaWVudF90eXBlIjoxLCJleHAiOjE3NjQ3NTY5NDIsImlhdCI6MTc2NDU4NDE0Mn0.liJVf1OIkZg715sJn0a9s0UkyTA7-1rDwFgISk4Vj7E",
-      appId: "100016277",
-    );
+    return true;
   }
 }
 
 class HuaweiInterceptor extends Interceptor {
+  _checkAccessToken() async {
+    if (HuaweiManager().initConfig.accessToken == "" ||
+        HuaweiManager().initConfig.expiresAt <= 0 ||
+        DateTime.now().millisecondsSinceEpoch > HuaweiManager().initConfig.expiresAt) {
+      await HuaweiManager().getToken();
+    }
+  }
+
+  @override
+  Future<void> onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
+    await _checkAccessToken();
+    options.headers["Authorization"] = "Bearer ${HuaweiManager().initConfig.accessToken}";
+    options.headers["client_id"] = HuaweiManager().initConfig.clientId;
+    handler.next(options);
+  }
+
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
     var ret = response.data["ret"];
