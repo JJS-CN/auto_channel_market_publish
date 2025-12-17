@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:auto_channel_market_publish/model/channel_config.dart';
+import 'package:auto_channel_market_publish/model/enums.dart';
 import 'package:auto_channel_market_publish/net/basic_channel_manager.dart';
 import 'package:auto_channel_market_publish/screen/main_screen.dart';
 import 'package:crypto/crypto.dart';
@@ -28,7 +29,6 @@ class TencentManager extends BasicChannelManager<TencentConfig> {
       "/query_app_detail",
       data: {"pkg_name": initConfig.packageName, "app_id": initConfig.appId},
     );
-    print("TencentManager queryApkConfig: ${result.data}");
     return result.data;
   }
 
@@ -64,7 +64,6 @@ class TencentManager extends BasicChannelManager<TencentConfig> {
       file_name: file_name,
       file_type: file_type,
     );
-    print("TencentManager upload_options: $upload_options");
     var pre_sign_url = upload_options["pre_sign_url"];
     var tempDio = Dio();
     tempDio.options.contentType = "application/octet-stream";
@@ -76,7 +75,6 @@ class TencentManager extends BasicChannelManager<TencentConfig> {
         print("TencentManager uploadFile progress: $sent, $total  ${sent / total * 100}%");
       },
     );
-    print("TencentManager uploadFile result: ${result.data}");
     upload_options["file_md5"] = file_md5;
     return upload_options;
   }
@@ -101,7 +99,6 @@ class TencentManager extends BasicChannelManager<TencentConfig> {
         "deploy_type": deploy_type,
       },
     );
-    print("TencentManager publishApp result: ${result.data}");
     return result.data;
   }
 
@@ -110,16 +107,29 @@ class TencentManager extends BasicChannelManager<TencentConfig> {
       "/query_app_update_status",
       data: {"pkg_name": initConfig.packageName, "app_id": initConfig.appId},
     );
-    print("TencentManager queryApkUpdateStatus result: ${result.data}");
     //audit_status 审核状态（1:审核中,2:审核驳回,3:审核通过,8:开发者主动撤销）
     //audit_reason 审核驳回原因
+    int audit_status = result.data["audit_status"];
+    String audit_reason = result.data["audit_reason"];
+    initConfig.auditInfo = AuditInfo(
+      releaseVersionCode: -1,
+      versionCode: -1,
+      auditStatus: audit_status == 1
+          ? AuditStatus.auditing
+          : audit_status == 2
+          ? AuditStatus.auditFailed
+          : audit_status == 3
+          ? AuditStatus.auditSuccess
+          : AuditStatus.known,
+      auditReason: audit_reason,
+    );
     return result.data;
   }
 
   @override
   Future<bool> checkChannelSuccess() async {
     try {
-      await queryApkConfig();
+      await queryApkUpdateStatus();
       initConfig.isSuccess = true;
       return true;
     } catch (e) {
@@ -193,12 +203,9 @@ class TencentInterceptor extends Interceptor {
 
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
-    print("TencentManager response: ${response.data}");
     if (response.data["ret"] == 0) {
-      print("TencentManager response success");
       handler.next(response);
     } else {
-      print("TencentManager response error: ${response.data["ret"]}");
       handler.reject(
         DioException(
           type: DioExceptionType.badResponse,

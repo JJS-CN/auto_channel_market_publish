@@ -298,6 +298,16 @@ class _MainScreenState extends State<MainScreen> {
                 statusColor = Colors.red;
               }
 
+              var releaseVersionCode = channel.auditInfo?.releaseVersionCode ?? 0;
+              var auditStatus = channel.auditInfo?.auditStatus ?? AuditStatus.known;
+              var auditStatusColor = auditStatus == AuditStatus.auditSuccess
+                  ? Colors.green
+                  : auditStatus == AuditStatus.auditFailed
+                  ? Colors.red
+                  : auditStatus == AuditStatus.auditing
+                  ? Colors.orange
+                  : Colors.grey;
+
               return Container(
                 padding: EdgeInsets.symmetric(horizontal: 8),
                 child: Column(
@@ -325,11 +335,31 @@ class _MainScreenState extends State<MainScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          "线上:v1.0.0",
-                          style: TextStyle(fontSize: 10, color: Colors.grey.shade600, height: 1),
+                        Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color:
+                                    ConfigManager().currentProjectConfig.updateConfig.versionCode >
+                                            releaseVersionCode ||
+                                        releaseVersionCode <= 0
+                                    ? Colors.orange
+                                    : Colors.green,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                            Text(
+                              " P:${releaseVersionCode}",
+                              style: TextStyle(fontSize: 9, color: Colors.grey.shade600, height: 1),
+                            ),
+                          ],
                         ),
-                        Text("审核:-", style: TextStyle(fontSize: 10, color: Colors.grey.shade600, height: 1)),
+                        Text(
+                          "${auditStatus.name}",
+                          style: TextStyle(fontSize: 9, color: auditStatusColor, height: 1),
+                        ),
                       ],
                     ),
                   ],
@@ -439,7 +469,7 @@ class _MainScreenState extends State<MainScreen> {
                                   height: 8,
                                   margin: EdgeInsets.symmetric(vertical: 1),
                                   decoration: BoxDecoration(
-                                    color: Colors.orange,
+                                    color: Colors.grey,
                                     borderRadius: BorderRadius.circular(2),
                                   ),
                                 ),

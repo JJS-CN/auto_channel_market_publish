@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:auto_channel_market_publish/model/channel_config.dart';
+import 'package:auto_channel_market_publish/model/enums.dart';
 import 'package:auto_channel_market_publish/net/basic_channel_manager.dart';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
@@ -21,26 +22,29 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
   int? _expiresAt;
 
   ///获取token
-  getToken({required String clientId, required String clientSecret}) async {
+  getToken() async {
     var tempDio = Dio();
     tempDio.options.contentType = "application/x-www-form-urlencoded";
     tempDio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
     var result = await tempDio.post(
       "https://iam.developer.honor.com/auth/token",
-      data: {"grant_type": "client_credentials", "client_id": clientId, "client_secret": clientSecret},
+      data: {
+        "grant_type": "client_credentials",
+        "client_id": initConfig.clientId,
+        "client_secret": initConfig.clientSecret,
+      },
     );
     _accessToken = result.data["access_token"];
     int expiresIn = result.data["expires_in"];
     DateTime now = DateTime.now();
     _expiresAt = now.add(Duration(seconds: expiresIn)).millisecondsSinceEpoch;
     _dio.options.headers["Authorization"] = "Bearer $_accessToken";
-    print("accessToken: $_accessToken, expiresAt: $_expiresAt");
     return result.data;
   }
 
-  _checkAccessToken({required String clientId, required String clientSecret}) async {
+  _checkAccessToken() async {
     if (_accessToken == null || _expiresAt == null || DateTime.now().millisecondsSinceEpoch > _expiresAt!) {
-      await getToken(clientId: clientId, clientSecret: clientSecret);
+      await getToken();
     }
   }
 
@@ -50,7 +54,7 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
     required String clientSecret,
     required String pkgName,
   }) async {
-    await _checkAccessToken(clientId: clientId, clientSecret: clientSecret);
+    await _checkAccessToken();
     var result = await _dio.get("/v1/publish/get-app-id", queryParameters: {"pkgName": pkgName});
     print(result.data.toString());
     List<dynamic> dataList = result.data["data"];
@@ -64,7 +68,7 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
   }
 
   getAppInfo() async {
-    await _checkAccessToken(clientId: initConfig.clientId, clientSecret: initConfig.clientSecret);
+    await _checkAccessToken();
     var result = await _dio.get("/v1/publish/get-app-detail", queryParameters: {"appId": initConfig.appId});
     print(result.data.toString());
     //引用基础信息
@@ -76,19 +80,34 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
     //线上版本信息
     String releaseVersionName = releaseInfo["versionName"];
     int releaseVersionCode = releaseInfo["versionCode"];
+
+    var auditResultData = await getAppAuditResult();
+    //0-审核中 1-审核通过 2-审核不通过 3-其他非审核状态 4-编辑中，未提交审核
+    int auditResult = auditResultData["auditResult"];
+    int versionCode = auditResultData["versionCode"];
+    String auditMessage = auditResultData["auditMessage"];
+    initConfig.auditInfo = AuditInfo(
+      releaseVersionCode: releaseVersionCode,
+      versionCode: versionCode,
+      auditStatus: auditResult == 0
+          ? AuditStatus.auditing
+          : auditResult == 1
+          ? AuditStatus.auditSuccess
+          : auditResult == 2
+          ? AuditStatus.auditFailed
+          : AuditStatus.known,
+      auditReason: auditMessage,
+    );
   }
 
   Future<int> getFileUploadOption({
-    required String clientId,
-    required String clientSecret,
-    required int appId,
     required String filePath,
     required int fileType,
     required String fileName,
     required int fileSize,
     required String fileSha256,
   }) async {
-    await _checkAccessToken(clientId: clientId, clientSecret: clientSecret);
+    await _checkAccessToken();
     //最多20个
     var uploadFiles = [];
     //1:应用图标 100:应用apk  参照https://developer.honor.com/cn/doc/guides/101359#h2-1712482613369
@@ -100,7 +119,7 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
     });
     var result = await _dio.post(
       "/v1/publish/get-file-upload-url",
-      queryParameters: {"appId": appId},
+      queryParameters: {"appId": initConfig.appId},
       data: uploadFiles,
     );
     print(result.data.toString());
@@ -123,16 +142,13 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
     required String fileSha256,
   }) async {
     var objectId = await getFileUploadOption(
-      clientId: clientId,
-      clientSecret: clientSecret,
-      appId: appId,
       filePath: filePath,
       fileType: fileType,
       fileName: fileName,
       fileSize: fileSize,
       fileSha256: fileSha256,
     );
-    await _checkAccessToken(clientId: clientId, clientSecret: clientSecret);
+    await _checkAccessToken();
     var tempDio = Dio();
     tempDio.options.headers["Authorization"] = "Bearer $_accessToken";
     tempDio.interceptors.add(LogInterceptor(requestBody: false, responseBody: true));
@@ -147,21 +163,16 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
       },
     );
     print(result.data.toString());
-    updateFileInfo(clientId: clientId, clientSecret: clientSecret, appId: appId, objectId: objectId);
+    updateFileInfo(objectId: objectId);
   }
 
-  updateFileInfo({
-    required String clientId,
-    required String clientSecret,
-    required int appId,
-    required int objectId,
-  }) async {
-    await _checkAccessToken(clientId: clientId, clientSecret: clientSecret);
+  updateFileInfo({required int objectId}) async {
+    await _checkAccessToken();
     var bindingFiles = [];
     bindingFiles.add({"objectId": objectId});
     var result = await _dio.post(
       "/v1/publish/update-file-info",
-      queryParameters: {"appId": appId},
+      queryParameters: {"appId": initConfig.appId},
       data: {"bindingFileList": bindingFiles},
     );
     print(result.data.toString());
@@ -170,16 +181,13 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
   /// 更新应用语言信息
   /// appName和intro等参数必填,需要从getAppInfo接口获取后缓存,用于后续更新
   updateLanguageInfo({
-    required String clientId,
-    required String clientSecret,
-    required int appId,
     String languageId = "zh-CN",
     required String appName,
     required String intro,
     required String briefIntro,
     required String newFeature,
   }) async {
-    await _checkAccessToken(clientId: clientId, clientSecret: clientSecret);
+    await _checkAccessToken();
     var languageInfo = {
       "languageId": languageId,
       "appName": appName,
@@ -192,7 +200,7 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
     };
     var result = await _dio.post(
       "/v1/publish/update-language-info",
-      queryParameters: {"appId": appId},
+      queryParameters: {"appId": initConfig.appId},
       data: reqBody,
     );
     print(result.data.toString());
@@ -200,16 +208,11 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
 
   ///提交审核
   ///[releaseType] 1-全网发布 2-指定时间发布3-分阶段发布
-  publishApp({
-    required String clientId,
-    required String clientSecret,
-    required int appId,
-    int releaseType = 1,
-  }) async {
-    await _checkAccessToken(clientId: clientId, clientSecret: clientSecret);
+  publishApp({int releaseType = 1}) async {
+    await _checkAccessToken();
     var result = await _dio.post(
       "/v1/publish/submit-audit",
-      queryParameters: {"appId": appId},
+      queryParameters: {"appId": initConfig.appId},
       data: {"releaseType": releaseType},
     );
     String auditId = result.data["data"];
@@ -217,32 +220,16 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
   }
 
   ///获取审核结果 需要缓存发布接口返回的id, 需要3小时只能查询一次
-  getAppAuditResult({
-    required String clientId,
-    required String clientSecret,
-    required int appId,
-    required String releaseId,
-  }) async {
-    await _checkAccessToken(clientId: clientId, clientSecret: clientSecret);
-    var result = await _dio.post(
-      "/v1/publish/get-audit-result",
-      data: {
-        "appId": [
-          {"appId": appId, "releaseId": releaseId},
-        ],
-      },
+  Future<Map<String, dynamic>> getAppAuditResult() async {
+    await _checkAccessToken();
+    var result = await _dio.get(
+      "/v1/publish/get-app-current-release",
+      queryParameters: {"appId": initConfig.appId},
     );
-    var data = result.data["data"].first;
-    //审核意见
-    String auditMessage = data["auditMessage"];
-    //审核意见附件，为url，可查看或下载
-    List<String> auditAttachment = data["auditAttachment"];
-    // 审核结果 0-审核中 1-审核通过 2-审核不通过 3-未提交审核或其他非审核状态
-    var auditResult = data["auditResult"];
-    var versionName = data["versionName"];
-    var versionCode = data["versionCode"];
-
-    print(result.data.toString());
+    var data = result.data["data"];
+    int auditResult = data["auditResult"];
+    int versionCode = data["versionCode"];
+    return data;
   }
 
   @override

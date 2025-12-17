@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:auto_channel_market_publish/model/channel_config.dart';
+import 'package:auto_channel_market_publish/model/enums.dart';
 import 'package:auto_channel_market_publish/net/basic_channel_manager.dart';
 import 'package:auto_channel_market_publish/screen/main_screen.dart';
 import 'package:dio/dio.dart';
@@ -30,7 +31,6 @@ class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
     _tempDio.options.contentType = "application/json;charset=UTF-8";
     _tempDio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
     var result = await _tempDio.post("https://connect-api.cloud.huawei.com/api/oauth2/v1/token", data: data);
-    print(result.data.toString());
     //{"access_token":"eyJraWQiOiJJbnBuMjNUaUJZbnJCb1RiYzJwSDhMaHdTMFdwUUFLViIsInR5cCI6IkpXVCIsImFsZyI6IkhTMjU2In0.eyJzdWIiOiIxNDUxNTQyMzM1MTY1ODU2MDY0IiwiZG4iOjEsImNsaWVudF90eXBlIjoxLCJleHAiOjE3NjQ3NTY2NzIsImlhdCI6MTc2NDU4Mzg3Mn0.xtwd7XoeJGd2mDyOrndLre5o219bh4yB77lKyI0km9I","expires_in":172799}
     var accessToken = result.data["access_token"];
     var expiresIn = result.data["expires_in"];
@@ -38,7 +38,6 @@ class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
     var expiresAt = now.add(Duration(seconds: expiresIn));
     initConfig.accessToken = accessToken;
     initConfig.expiresAt = expiresAt.millisecondsSinceEpoch;
-    print("accessToken: $accessToken, expiresAt: $expiresAt");
     return result.data;
   }
 
@@ -50,11 +49,24 @@ class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
     var releaseState = HuaweiReleaseState.fromValue(appInfo["releaseState"]);
     var updateTime = appInfo["updateTime"];
     var versionNumber = appInfo["versionNumber"];
-    var versionCode = appInfo["versionCode"];
+    var versionCode = appInfo["versionCode"] ?? 0;
     var onShelfVersionNumber = appInfo["onShelfVersionNumber"];
-    var onShelfVersionCode = appInfo["onShelfVersionCode"];
+    var onShelfVersionCode = appInfo["onShelfVersionCode"] ?? 0;
     //审核意见
     var auditOpinion = result.data["auditInfo"]["auditOpinion"];
+
+    initConfig.auditInfo = AuditInfo(
+      releaseVersionCode: onShelfVersionCode,
+      versionCode: versionCode,
+      auditStatus: releaseState == HuaweiReleaseState.audit || releaseState == HuaweiReleaseState.upgradeAudit
+          ? AuditStatus.auditing
+          : releaseState == HuaweiReleaseState.upgradeAuditFailed
+          ? AuditStatus.auditFailed
+          : releaseState == HuaweiReleaseState.released
+          ? AuditStatus.auditSuccess
+          : AuditStatus.known,
+      auditReason: auditOpinion,
+    );
     return {
       "releaseState": releaseState,
       "updateTime": updateTime,
@@ -178,6 +190,7 @@ class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
       initConfig.isSuccess = true;
       return true;
     } catch (e) {
+      print("HuaweiManager checkChannelSuccess error: $e");
       initConfig.isSuccess = false;
       return false;
     }

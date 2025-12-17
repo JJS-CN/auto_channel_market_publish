@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:auto_channel_market_publish/model/channel_config.dart';
+import 'package:auto_channel_market_publish/model/enums.dart';
 import 'package:auto_channel_market_publish/net/basic_channel_manager.dart';
 import 'package:auto_channel_market_publish/net/interceptor/interceptor_vivo.dart';
 import 'package:auto_channel_market_publish/screen/main_screen.dart';
@@ -39,7 +40,18 @@ class VivoManager extends BasicChannelManager<VivoConfig> {
     int status = data["status"];
     //审核不通过原因
     String unPassReason = data["unPassReason"] ?? "";
-    print("VivoManager queryAppInfo result: $versionCode, $versionName, $saleStatus, $status, $unPassReason");
+    initConfig.auditInfo = AuditInfo(
+      releaseVersionCode: versionCode,
+      versionCode: versionCode,
+      auditStatus: status == 3
+          ? AuditStatus.auditSuccess
+          : status == 4
+          ? AuditStatus.auditFailed
+          : status == 2
+          ? AuditStatus.auditing
+          : AuditStatus.known,
+      auditReason: unPassReason,
+    );
     return result.data;
   }
 
@@ -88,7 +100,6 @@ class VivoManager extends BasicChannelManager<VivoConfig> {
         "updateDesc": updateDesc,
       },
     );
-    print("VivoManager publishApp success");
   }
 
   @override

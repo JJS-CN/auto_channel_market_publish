@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:auto_channel_market_publish/model/channel_config.dart';
+import 'package:auto_channel_market_publish/model/enums.dart';
 import 'package:auto_channel_market_publish/model/query_apk_result.dart';
 import 'package:auto_channel_market_publish/net/basic_channel_manager.dart';
 import 'package:auto_channel_market_publish/net/xiaomi_helper.dart';
@@ -40,6 +41,21 @@ class XiaomiManager extends BasicChannelManager<XiaomiConfig> {
     var encrypted = await XiaomiHelper.encodeSIG(initConfig.publicPem, sigData);
     var fromData = {"RequestData": json.encode(requestData), "SIG": encrypted};
     var result = await _dio.post("/dev/query", data: FormData.fromMap(fromData));
+    //允许更新版本
+    var updateVersion = result.data["updateVersion"];
+    //允许更新信息
+    var updateInfo = result.data["updateInfo"];
+    //允许新增应用
+    var create = result.data["create"];
+    //应用信息
+    var packageInfo = result.data["packageInfo"];
+    int onlineVersionCode = packageInfo["onlineVersionCode"];
+    int versionCode = packageInfo["versionCode"];
+    initConfig.auditInfo = AuditInfo(
+      releaseVersionCode: onlineVersionCode,
+      versionCode: versionCode,
+      auditStatus: updateVersion && updateInfo ? AuditStatus.auditSuccess : AuditStatus.auditing,
+    );
     return QueryApkResult.fromJson(result.data);
   }
 
@@ -55,7 +71,6 @@ class XiaomiManager extends BasicChannelManager<XiaomiConfig> {
     var encrypted = await XiaomiHelper.encodeSIG(xiaomiConfig.publicPem, sigData);
     var fromData = {"RequestData": json.encode(requestData), "SIG": encrypted};
     var result = await _dio.post("/dev/category", data: FormData.fromMap(fromData));
-    print(result.data.toString());
     return Future.value(true);
   }
 
@@ -124,7 +139,6 @@ class XiaomiManager extends BasicChannelManager<XiaomiConfig> {
         print("xiaomi publish progress: $sent, $total  ${sent / total * 100}%");
       },
     );
-    print(result.data.toString());
     return Future.value(true);
   }
 
@@ -142,7 +156,7 @@ class XiaomiManager extends BasicChannelManager<XiaomiConfig> {
 
   @override
   Future<bool> startPublish(UpdateConfig updateConfig) async {
-    var apkPath =  initConfig.uploadApkInfo?.apkPath;
+    var apkPath = initConfig.uploadApkInfo?.apkPath;
     var apkInfo = await queryApkConfig();
     if (!apkInfo.updateVersion) {
       SmartDialog.showToast("应用版本不能更新", displayType: SmartToastType.onlyRefresh);

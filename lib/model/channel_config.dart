@@ -183,7 +183,7 @@ class XiaomiConfig extends BaseChannelConfig {
   }
 
   factory XiaomiConfig.fromJson(Map<String, dynamic> json) => _$XiaomiConfigFromJson(json);
-  Map<String, dynamic> toJson() => _$XiaomiConfigToJson(this);
+  Map<String, dynamic> toJson() => _$XiaomiConfigToJson(this)..["auditInfo"] = auditInfo?.toJson() ?? {};
 }
 
 @JsonSerializable()
@@ -211,7 +211,7 @@ class HonorConfig extends BaseChannelConfig {
   BasicChannelManager get bindManager => HonorManager();
 
   factory HonorConfig.fromJson(Map<String, dynamic> json) => _$HonorConfigFromJson(json);
-  Map<String, dynamic> toJson() => _$HonorConfigToJson(this);
+  Map<String, dynamic> toJson() => _$HonorConfigToJson(this)..["auditInfo"] = auditInfo?.toJson() ?? {};
 }
 
 @JsonSerializable()
@@ -240,7 +240,7 @@ class HuaweiConfig extends BaseChannelConfig {
   BasicChannelManager get bindManager => HuaweiManager();
 
   factory HuaweiConfig.fromJson(Map<String, dynamic> json) => _$HuaweiConfigFromJson(json);
-  Map<String, dynamic> toJson() => _$HuaweiConfigToJson(this);
+  Map<String, dynamic> toJson() => _$HuaweiConfigToJson(this)..["auditInfo"] = auditInfo?.toJson() ?? {};
 }
 
 @JsonSerializable()
@@ -263,7 +263,7 @@ class VivoConfig extends BaseChannelConfig {
   BasicChannelManager get bindManager => VivoManager();
 
   factory VivoConfig.fromJson(Map<String, dynamic> json) => _$VivoConfigFromJson(json);
-  Map<String, dynamic> toJson() => _$VivoConfigToJson(this);
+  Map<String, dynamic> toJson() => _$VivoConfigToJson(this)..["auditInfo"] = auditInfo?.toJson() ?? {};
 }
 
 @JsonSerializable()
@@ -289,7 +289,7 @@ class OppoConfig extends BaseChannelConfig {
   BasicChannelManager get bindManager => OppoManager();
 
   factory OppoConfig.fromJson(Map<String, dynamic> json) => _$OppoConfigFromJson(json);
-  Map<String, dynamic> toJson() => _$OppoConfigToJson(this);
+  Map<String, dynamic> toJson() => _$OppoConfigToJson(this)..["auditInfo"] = auditInfo?.toJson() ?? {};
 }
 
 @JsonSerializable()
@@ -313,7 +313,7 @@ class TencentConfig extends BaseChannelConfig {
   BasicChannelManager get bindManager => TencentManager();
 
   factory TencentConfig.fromJson(Map<String, dynamic> json) => _$TencentConfigFromJson(json);
-  Map<String, dynamic> toJson() => _$TencentConfigToJson(this);
+  Map<String, dynamic> toJson() => _$TencentConfigToJson(this)..["auditInfo"] = auditInfo?.toJson() ?? {};
 }
 
 abstract class BaseChannelConfig {
@@ -361,8 +361,14 @@ class UploadApkInfo {
 //审核状态
 @JsonSerializable()
 class AuditInfo {
-  AuditInfo({this.releaseVersionCode = 0, this.auditStatus = AuditStatus.known, this.auditReason = ""});
+  AuditInfo({
+    this.releaseVersionCode = 0,
+    this.versionCode = 0,
+    this.auditStatus = AuditStatus.known,
+    this.auditReason = "",
+  });
   int releaseVersionCode;
+  int versionCode;
   AuditStatus auditStatus;
   //审核意见
   String auditReason;

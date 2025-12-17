@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:auto_channel_market_publish/model/channel_config.dart';
+import 'package:auto_channel_market_publish/model/enums.dart';
 import 'package:auto_channel_market_publish/net/basic_channel_manager.dart';
 import 'package:auto_channel_market_publish/screen/main_screen.dart';
 import 'package:crypto/crypto.dart';
@@ -27,7 +28,6 @@ class OppoManager extends BasicChannelManager<OppoConfig> {
       "https://oop-openapi-cn.heytapmobi.com/developer/v1/token",
       queryParameters: {"client_id": clientId, "client_secret": clientSecret},
     );
-    print("OppoManager getToken result: ${result.data}");
     initConfig.access_token = result.data["data"]["access_token"];
     initConfig.expires_at = result.data["data"]["expire_in"];
     return result.data;
@@ -38,16 +38,27 @@ class OppoManager extends BasicChannelManager<OppoConfig> {
       "/resource/v1/app/info",
       queryParameters: {"pkg_name": initConfig.packageName},
     );
-    print("OppoManager queryAppInfo result: ${result.data}");
-    //审核状态
-    String audit_status = result.data["audit_status"];
+    //审核状态 1审核中 2审核通过 3审核不通过
+    int audit_status = int.parse(result.data["audit_status"]);
     //审核状态描述
     String audit_status_name = result.data["audit_status_name"];
     //更新资料审核状态 0:不在审核中 1:审核中
     int update_info_check = result.data["update_info_check"];
     //打回附件链接
     String refuse_file = result.data["refuse_file"];
-    String version_code = result.data["version_code"];
+    int versionCode = int.parse(result.data["version_code"]);
+    initConfig.auditInfo = AuditInfo(
+      releaseVersionCode: versionCode,
+      versionCode: versionCode,
+      auditStatus: audit_status == 1
+          ? AuditStatus.auditing
+          : audit_status == 2 || audit_status == 111
+          ? AuditStatus.auditSuccess
+          : audit_status == 3 || audit_status == 444
+          ? AuditStatus.auditFailed
+          : AuditStatus.known,
+      auditReason: refuse_file,
+    );
     var data = result.data;
     data["audit_status"] = int.parse(data["audit_status"]);
     return data;
@@ -69,7 +80,6 @@ class OppoManager extends BasicChannelManager<OppoConfig> {
         print("uploadFile progress: $sent, $total  ${sent / total * 100}%");
       },
     );
-    print("OppoManager uploadFile result: ${result.data}");
     //{errno: 0, data: {url: http://storedl1.nearme.com.cn/apk/tmp_apk/202512/11/432d87b9d1e36deb834e74c7ea72c55e.apk, uri_path: /apk/tmp_apk/202512/11/432d87b9d1e36deb834e74c7ea72c55e.apk, md5: a6b0a941f15f2496f30d71dce88e3b66, file_size: 163388885, file_extension: apk, width: 0, height: 0, id: e53935b8-c847-435c-a948-751fe138c1e2, sign: 1e69883fc54e0c1354a0c8209b20598a}, logid: e53935b8-c847-435c-a948-751fe138c1e2}
     if (result.data["errno"] == 0) {
       var data = result.data["data"];
@@ -82,7 +92,6 @@ class OppoManager extends BasicChannelManager<OppoConfig> {
 
   _getUploadOptions() async {
     var result = await _dio.get("/resource/v1/upload/get-upload-url");
-    print("OppoManager _getUploadOptions result: ${result.data}");
     var upload_url = result.data["upload_url"];
     var sign = result.data["sign"];
     //{"upload_url":"https://api.open.oppomobile.com/api/utility/upload","sign":"fff63a0864cef2bf2c480bc9dc20e41d"}
@@ -130,7 +139,6 @@ class OppoManager extends BasicChannelManager<OppoConfig> {
         "business_mobile": newAppInfo["business_mobile"],
       },
     );
-    print("OppoManager publishApp result: ${result.data}");
     return result.data;
   }
 
@@ -194,7 +202,6 @@ class OppoInterceptor extends Interceptor {
     }
     requestData.addAll(options.queryParameters);
 
-    print("OppoManager requestData: $requestData");
 
     //清空value为null的数据
     requestData.removeWhere((key, value) => value == null);
@@ -224,13 +231,10 @@ class OppoInterceptor extends Interceptor {
 
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
-    print("OppoManager response: ${response.data}");
     if (response.data["errno"] == 0) {
-      print("OppoManager response success");
       response.data = response.data["data"];
       handler.next(response);
     } else {
-      print("OppoManager response error: ${response.data["errno"]}");
       handler.reject(
         DioException(
           type: DioExceptionType.badResponse,

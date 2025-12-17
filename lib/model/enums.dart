@@ -1,7 +1,7 @@
 enum ChannelEnum { xiaomi, tencent, huawei, honor, oppo, vivo }
 
 enum AuditStatus {
-  known("不在审核"),
+  known("未知"),
   auditing("审核中"),
   auditFailed("审核失败"),
   auditSuccess("审核成功");

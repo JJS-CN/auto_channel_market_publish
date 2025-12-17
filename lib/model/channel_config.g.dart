@@ -289,6 +289,7 @@ Map<String, dynamic> _$UploadApkInfoToJson(UploadApkInfo instance) =>
 
 AuditInfo _$AuditInfoFromJson(Map<String, dynamic> json) => AuditInfo(
   releaseVersionCode: (json['releaseVersionCode'] as num?)?.toInt() ?? 0,
+  versionCode: (json['versionCode'] as num?)?.toInt() ?? 0,
   auditStatus:
       $enumDecodeNullable(_$AuditStatusEnumMap, json['auditStatus']) ??
       AuditStatus.known,
@@ -297,6 +298,7 @@ AuditInfo _$AuditInfoFromJson(Map<String, dynamic> json) => AuditInfo(
 
 Map<String, dynamic> _$AuditInfoToJson(AuditInfo instance) => <String, dynamic>{
   'releaseVersionCode': instance.releaseVersionCode,
+  'versionCode': instance.versionCode,
   'auditStatus': _$AuditStatusEnumMap[instance.auditStatus]!,
   'auditReason': instance.auditReason,
 };
