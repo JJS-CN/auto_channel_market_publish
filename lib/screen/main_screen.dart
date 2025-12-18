@@ -68,6 +68,8 @@ class _MainScreenState extends State<MainScreen> {
           _buildChannelApkInfo(),
           _buildUpgradeInfo(),
           SizedBox(height: 20),
+          _buildFilterActionInfo(),
+          SizedBox(height: 10),
           _buildPublishButton(),
         ],
       ),
@@ -300,69 +302,97 @@ class _MainScreenState extends State<MainScreen> {
 
               var releaseVersionCode = channel.auditInfo?.releaseVersionCode ?? 0;
               var auditStatus = channel.auditInfo?.auditStatus ?? AuditStatus.known;
+
+              var onlineColor = Colors.grey;
+              if (releaseVersionCode < ConfigManager().currentProjectConfig.updateConfig.versionCode ||
+                  releaseVersionCode <= 0) {
+                onlineColor = Colors.orange;
+              } else {
+                onlineColor = Colors.green;
+              }
               var auditStatusColor = auditStatus == AuditStatus.auditSuccess
-                  ? Colors.green
+                  ? Colors.grey
                   : auditStatus == AuditStatus.auditFailed
                   ? Colors.red
                   : auditStatus == AuditStatus.auditing
                   ? Colors.orange
                   : Colors.grey;
-
-              return Container(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Container(
-                          margin: EdgeInsets.only(right: 3),
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: statusColor,
-                            borderRadius: BorderRadius.circular(5),
+              return GestureDetector(
+                onTap: () {
+                  //审核情况
+                  if (channel.auditInfo != null) {
+                    SmartDialog.show(
+                      builder: (context) {
+                        return Container(
+                          constraints: BoxConstraints(
+                            maxWidth: 500,
+                            minWidth: 200,
+                            maxHeight: 500,
+                            minHeight: 120,
                           ),
-                        ),
-                        Text(channel.channel.name),
-                        SizedBox(width: 2),
-                      ],
-                    ),
+                          child: Card(
+                            color: Colors.white,
+                            child: Container(
+                              padding: EdgeInsets.all(10),
+                              child: SelectableText(json.encode(channel.auditInfo!.toJson())),
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  }
+                },
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            margin: EdgeInsets.only(right: 3),
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: statusColor,
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                          ),
+                          Text(channel.channel.name),
+                          SizedBox(width: 2),
+                        ],
+                      ),
 
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color:
-                                    ConfigManager().currentProjectConfig.updateConfig.versionCode >
-                                            releaseVersionCode ||
-                                        releaseVersionCode <= 0
-                                    ? Colors.orange
-                                    : Colors.green,
-                                borderRadius: BorderRadius.circular(2),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: onlineColor,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
                               ),
-                            ),
-                            Text(
-                              " P:${releaseVersionCode}",
-                              style: TextStyle(fontSize: 9, color: Colors.grey.shade600, height: 1),
-                            ),
-                          ],
-                        ),
-                        Text(
-                          "${auditStatus.name}",
-                          style: TextStyle(fontSize: 9, color: auditStatusColor, height: 1),
-                        ),
-                      ],
-                    ),
-                  ],
+                              Text(
+                                " P:${releaseVersionCode}",
+                                style: TextStyle(fontSize: 9, color: Colors.grey.shade600, height: 1),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            "${auditStatus.name}",
+                            style: TextStyle(fontSize: 9, color: auditStatusColor, height: 1),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
@@ -558,9 +588,17 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
+  _buildFilterActionInfo() {
+    return Container(
+      child: Row(
+        children: [Text("过滤操作:", style: TextStyle(fontSize: 12, color: Colors.grey.shade600, height: 1))],
+      ),
+    );
+  }
+
   _buildPublishButton() {
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
         var projectConfig = ConfigManager().currentProjectConfig;
         if (!projectConfig.updateConfig.isComplete()) {
           SmartDialog.showToast("更新信息不完整,请检查");
@@ -591,10 +629,6 @@ class _MainScreenState extends State<MainScreen> {
               }
             }
           }
-          print(channelConfig.channel.name);
-          print(originUploadApkInfoStr);
-          print(channelConfig.uploadApkInfo?.toJson().toString());
-          print("--------------------------------");
           var newUploadApkInfoStr = channelConfig.uploadApkInfo?.toJson().toString();
           if (originUploadApkInfoStr != newUploadApkInfoStr) {
             isApkUpdate = true;
@@ -615,6 +649,29 @@ class _MainScreenState extends State<MainScreen> {
           setState(() {});
           return;
         }
+        //更新渠道审核状态
+        await ConfigManager().checkChannelParamsSuccess();
+        //筛选需要执行更新的渠道:不在审核中,且线上版本号小于当前版本号
+        var needUpdateChannels = allChannelConfigs
+            .where(
+              (element) =>
+                  element.auditInfo?.auditStatus != AuditStatus.auditing &&
+                  (element.auditInfo?.releaseVersionCode ?? 0) < projectConfig.updateConfig.versionCode,
+            )
+            .toList();
+        //临时剔除tencent
+        needUpdateChannels.removeWhere((element) => element.channel == ChannelEnum.tencent);
+        print("needUpdateChannels: ${needUpdateChannels.map((e) => e.channel.name).join(",")}");
+        for (var channelConfig in needUpdateChannels) {
+          await channelConfig.bindManager.startPublish(projectConfig.updateConfig);
+        }
+        if (needUpdateChannels.isEmpty) {
+          SmartDialog.showToast("没有需要更新的渠道");
+          setState(() {});
+          return;
+        }
+        SmartDialog.showToast("更新完成,请等待审核结果");
+        setState(() {});
       },
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),

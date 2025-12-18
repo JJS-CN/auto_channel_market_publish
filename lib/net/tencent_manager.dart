@@ -111,18 +111,22 @@ class TencentManager extends BasicChannelManager<TencentConfig> {
     //audit_reason 审核驳回原因
     int audit_status = result.data["audit_status"];
     String audit_reason = result.data["audit_reason"];
-    initConfig.auditInfo = AuditInfo(
-      releaseVersionCode: -1,
-      versionCode: -1,
-      auditStatus: audit_status == 1
-          ? AuditStatus.auditing
-          : audit_status == 2
-          ? AuditStatus.auditFailed
-          : audit_status == 3
-          ? AuditStatus.auditSuccess
-          : AuditStatus.known,
-      auditReason: audit_reason,
-    );
+    var auditInfo = initConfig.auditInfo ?? AuditInfo();
+    auditInfo.auditStatus = audit_status == 1
+        ? AuditStatus.auditing
+        : audit_status == 2
+        ? AuditStatus.auditFailed
+        : audit_status == 3
+        ? AuditStatus.auditSuccess
+        : AuditStatus.known;
+    auditInfo.auditReason = audit_reason;
+    if (auditInfo.auditStatus == AuditStatus.auditSuccess) {
+      if (auditInfo.releaseVersionCode < auditInfo.versionCode) {
+        auditInfo.releaseVersionCode = auditInfo.versionCode;
+      }
+    }
+
+    initConfig.auditInfo = auditInfo;
     return result.data;
   }
 
@@ -162,6 +166,10 @@ class TencentManager extends BasicChannelManager<TencentConfig> {
       feature: updateConfig.updateDesc,
       deploy_type: 1,
     );
+    var auditInfo = initConfig.auditInfo ?? AuditInfo();
+    auditInfo.auditStatus = AuditStatus.auditing;
+    auditInfo.versionCode = updateConfig.versionCode;
+    initConfig.auditInfo = auditInfo;
     return true;
   }
 }

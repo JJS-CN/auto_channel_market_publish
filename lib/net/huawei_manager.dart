@@ -53,7 +53,7 @@ class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
     var onShelfVersionNumber = appInfo["onShelfVersionNumber"];
     var onShelfVersionCode = appInfo["onShelfVersionCode"] ?? 0;
     //审核意见
-    var auditOpinion = result.data["auditInfo"]["auditOpinion"];
+    String auditOpinion = result.data["auditInfo"]["auditOpinion"] ?? "";
 
     initConfig.auditInfo = AuditInfo(
       releaseVersionCode: onShelfVersionCode,
@@ -127,11 +127,11 @@ class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
 
     print(result.data.toString());
     //{"ret":{"code":0,"msg":"success"},"urlInfo":{"objectId":"CN/2025120111/1764589669963-d0cab5d5-46c0-417b-a14f-428fe0542c41.apk","url":"https://nsp-appgallery-agcfs-drcn.obs.cn-north-2.myhuaweicloud.cn/CN/2025120111/1764589669963-d0cab5d5-46c0-417b-a14f-428fe0542c41.apk","method":"PUT","headers":{"Authorization":"AWS4-HMAC-SHA256 Credential=HPUAD4DHWFBMSLSTBETK/20251201/cn-north-2/s3/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-content-sha256;x-amz-date, Signature=7ba8cfde7297821bed4aaff571be6550c9f637c26a5dd6e689791163420b106b","x-amz-content-sha256":"UNSIGNED-PAYLOAD","x-amz-date":"20251201T114749Z","Host":"nsp-appgallery-agcfs-drcn.obs.cn-north-2.myhuaweicloud.cn","user-agent":"Apache-HttpClient/4.5.14 (Java/1.8.0_402)","Content-Type":"application/octet-stream"}}}
-    return HuaweiUploadUrlOptions(url: url, method: method, headers: headers);
+    return HuaweiUploadUrlOptions(objectId: objectId, url: url, method: method, headers: headers);
   }
 
   /// 执行文件上传
-  Future<void> uploadFile({required String filePath}) async {
+  Future<String> uploadFile({required String filePath}) async {
     var fileName = File(filePath).path.split("/").last;
     var contentLength = File(filePath).lengthSync();
     var uploadOptions = await getUploadOptions(fileName: fileName, contentLength: contentLength);
@@ -150,21 +150,24 @@ class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
       },
     );
     print(result.data.toString());
+    return uploadOptions.objectId;
   }
 
-  publishAppFileInfo({
+  ///更新文件信息
+  publishFileInfo({
     int releaseType = 1,
     required int fileType,
-    required String fileName,
-    required String fileDestUrl,
+    required String filePath,
+    required String objectId,
   }) async {
+    var fileName = filePath.split("/").last;
     var result = await _dio.put(
       "/publish/v2/app-file-info",
       queryParameters: {"releaseType": releaseType, "appId": initConfig.appId},
       data: {
         "fileType": fileType,
         "files": [
-          {"fileName": fileName, "fileDestUrl": fileDestUrl},
+          {"fileName": fileName, "fileDestUrl": objectId},
         ],
       },
     );
@@ -173,9 +176,8 @@ class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
     print(result.data.toString());
   }
 
+
   publishApp({int releaseType = 1}) async {
-    _dio.options.headers["client_id"] = initConfig.clientId;
-    _dio.options.headers["Authorization"] = "Bearer ${initConfig.accessToken}";
     var result = await _dio.post(
       "/publish/v2/app-submit",
       queryParameters: {"releaseType": releaseType, "appId": initConfig.appId},
@@ -198,7 +200,7 @@ class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
 
   @override
   Future<bool> startPublish(UpdateConfig updateConfig) async {
-    publishLanguageInfo(appDesc: updateConfig.updateDesc);
+    publishLanguageInfo(newFeatures: updateConfig.updateDesc);
     var filePath = initConfig.uploadApkInfo?.apkPath;
     var appInfo = await queryApkInfo();
     if (appInfo["releaseState"] == HuaweiReleaseState.audit ||
@@ -207,7 +209,9 @@ class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
       return false;
     }
 
-    var uploadResult = await uploadFile(filePath: filePath!);
+    var uploadApkObjectId = await uploadFile(filePath: filePath!);
+
+    await publishFileInfo(fileType: 5, filePath: filePath, objectId: uploadApkObjectId);
     var publishResult = await publishApp(releaseType: 1);
 
     return true;
@@ -289,7 +293,13 @@ class HuaweiUploadInfo {
 }
 
 class HuaweiUploadUrlOptions {
-  HuaweiUploadUrlOptions({required this.url, required this.method, required this.headers});
+  HuaweiUploadUrlOptions({
+    required this.objectId,
+    required this.url,
+    required this.method,
+    required this.headers,
+  });
+  String objectId;
   String url;
   String method;
   Map<String, dynamic> headers;

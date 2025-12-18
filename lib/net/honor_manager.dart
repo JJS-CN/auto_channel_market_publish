@@ -49,13 +49,12 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
   }
 
   /// 获取应用ID  这一步可以直接从管理后台查看
-  Future<int> getAppId({
-    required String clientId,
-    required String clientSecret,
-    required String pkgName,
-  }) async {
+  Future<int> getAppId() async {
     await _checkAccessToken();
-    var result = await _dio.get("/v1/publish/get-app-id", queryParameters: {"pkgName": pkgName});
+    var result = await _dio.get(
+      "/v1/publish/get-app-id",
+      queryParameters: {"pkgName": initConfig.packageName},
+    );
     print(result.data.toString());
     List<dynamic> dataList = result.data["data"];
     if (dataList.isNotEmpty) {
@@ -67,10 +66,9 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
     return 0;
   }
 
-  getAppInfo() async {
+  Future<Map<String, dynamic>> getAppInfo() async {
     await _checkAccessToken();
     var result = await _dio.get("/v1/publish/get-app-detail", queryParameters: {"appId": initConfig.appId});
-    print(result.data.toString());
     //引用基础信息
     var data = result.data["data"];
     var basicInfo = data["basicInfo"];
@@ -78,14 +76,14 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
     int appCategoryId = basicInfo["appCategoryId"];
     var releaseInfo = data["releaseInfo"];
     //线上版本信息
-    String releaseVersionName = releaseInfo["versionName"];
-    int releaseVersionCode = releaseInfo["versionCode"];
+    String releaseVersionName = releaseInfo["versionName"] ?? "";
+    int releaseVersionCode = releaseInfo["versionCode"] ?? 0;
 
     var auditResultData = await getAppAuditResult();
     //0-审核中 1-审核通过 2-审核不通过 3-其他非审核状态 4-编辑中，未提交审核
     int auditResult = auditResultData["auditResult"];
     int versionCode = auditResultData["versionCode"];
-    String auditMessage = auditResultData["auditMessage"];
+    String auditMessage = auditResultData["auditMessage"] ?? "";
     initConfig.auditInfo = AuditInfo(
       releaseVersionCode: releaseVersionCode,
       versionCode: versionCode,
@@ -98,16 +96,15 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
           : AuditStatus.known,
       auditReason: auditMessage,
     );
+    return data;
   }
 
-  Future<int> getFileUploadOption({
-    required String filePath,
-    required int fileType,
-    required String fileName,
-    required int fileSize,
-    required String fileSha256,
-  }) async {
+  Future<int> getFileUploadOption({required String filePath, required int fileType}) async {
     await _checkAccessToken();
+    var fileName = filePath.split("/").last;
+    var fileSize = File(filePath).lengthSync();
+    var fileSha256 = (await sha256.bind(File(filePath).openRead()).first).toString();
+
     //最多20个
     var uploadFiles = [];
     //1:应用图标 100:应用apk  参照https://developer.honor.com/cn/doc/guides/101359#h2-1712482613369
@@ -131,23 +128,8 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
     return objectId;
   }
 
-  uploadFile({
-    required String clientId,
-    required String clientSecret,
-    required int appId,
-    required String filePath,
-    required int fileType,
-    required String fileName,
-    required int fileSize,
-    required String fileSha256,
-  }) async {
-    var objectId = await getFileUploadOption(
-      filePath: filePath,
-      fileType: fileType,
-      fileName: fileName,
-      fileSize: fileSize,
-      fileSha256: fileSha256,
-    );
+  uploadFile({required String filePath, required int fileType}) async {
+    var objectId = await getFileUploadOption(filePath: filePath, fileType: fileType);
     await _checkAccessToken();
     var tempDio = Dio();
     tempDio.options.headers["Authorization"] = "Bearer $_accessToken";
@@ -156,14 +138,13 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
 
     var result = await tempDio.post(
       "https://appmarket-openapi-drcn.cloud.honor.com/openapi/v1/publish/file-upload",
-      queryParameters: {"appId": appId, "objectId": objectId},
+      queryParameters: {"appId": initConfig.appId, "objectId": objectId},
       data: FormData.fromMap({"file": MultipartFile.fromFileSync(filePath)}),
       onSendProgress: (int sent, int total) {
         print("uploadFile progress: $sent, $total  ${sent / total * 100}%");
       },
     );
-    print(result.data.toString());
-    updateFileInfo(objectId: objectId);
+   await updateFileInfo(objectId: objectId);
   }
 
   updateFileInfo({required int objectId}) async {
@@ -239,6 +220,7 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
       initConfig.isSuccess = true;
       return true;
     } catch (e) {
+      print("HonorManager checkChannelSuccess error: $e");
       initConfig.isSuccess = false;
       return false;
     }
@@ -246,6 +228,25 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
 
   @override
   Future<bool> startPublish(UpdateConfig updateConfig) async {
+    var appInfo = await getAppInfo();
+    appInfo["languageInfo"].forEach((languageInfo) async {
+      String appName = languageInfo["appName"];
+      String intro = languageInfo["intro"];
+      String briefIntro = languageInfo["briefIntro"];
+      String newFeature = languageInfo["newFeature"];
+      if (updateConfig.updateDesc.isNotEmpty) {
+        newFeature = updateConfig.updateDesc;
+      }
+      await updateLanguageInfo(
+        appName: appName,
+        intro: intro,
+        briefIntro: briefIntro,
+        newFeature: newFeature,
+      );
+    });
+    var filePath = initConfig.uploadApkInfo?.apkPath;
+    var uploadApkObjectId = await uploadFile(filePath: filePath!, fileType: 100);
+    var publishResult = await publishApp(releaseType: 1);
     return true;
   }
 }
