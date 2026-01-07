@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'dart:math';
 
 import 'package:auto_channel_market_publish/manager/sp_manager.dart';
 import 'package:auto_channel_market_publish/model/channel_config.dart';
 import 'package:auto_channel_market_publish/model/enums.dart';
+import 'package:auto_channel_market_publish/net/huawei_manager.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 
 class ConfigManager {
@@ -128,7 +131,32 @@ class ConfigManager {
   }
 
   ///执行apk更新发布
-  Future<bool> startApkPublish() async {
+  Future<bool> startApkPublish(Function(BaseChannelConfig channelConfig) onPublishNotify) async {
+    var allChannelConfigs = _curProject.allChannelConfigs();
+    //剔除线上>=本次版本号渠道
+    allChannelConfigs.removeWhere(
+      (channelConfig) =>
+          (channelConfig.auditInfo?.releaseVersionCode ?? 0) >= _curProject.updateConfig.versionCode,
+    );
+    //剔除正在审核中的渠道
+    allChannelConfigs.removeWhere(
+      (channelConfig) => channelConfig.auditInfo?.auditStatus == AuditStatus.auditing,
+    );
+    print("allChannelConfigs: ${allChannelConfigs.length}");
+    print("allChannelConfigs: ${allChannelConfigs.map((e) => e.channel.name).join(",")}");
+
+    await Future.wait(
+      allChannelConfigs.map((channelConfig) async {
+        await channelConfig.bindManager.startPublish(_curProject.updateConfig);
+        onPublishNotify.call(channelConfig);
+        return Future.value(true);
+      }),
+    );
+    return true;
+  }
+
+  ///检查是否可以执行
+  Future<bool> checkStartReady() async {
     //检查更新信息是否完整
     if (_curProject.updateConfig.isComplete() != true) {
       SmartDialog.showToast("更新信息不完整,请检查");
@@ -157,8 +185,45 @@ class ConfigManager {
       return false;
     }
     //查询更新所需的apk包
+    allChannelConfigs.forEach((channelConfig) {
+      channelConfig.uploadApkInfo = UploadApkInfo();
+    });
+
+    Directory apkDir = Directory(_curProject.apkDir);
+    apkDir.listSync().forEach((element) {
+      allChannelConfigs.forEach((channelConfig) {
+        if (element.path.contains(channelConfig.channel.name) &&
+            element.path.contains(channelConfig.packageName) &&
+            element.path.contains(_curProject.updateConfig.versionCode.toString())) {
+          //渠道号匹配上,说明是这个渠道包的
+          if (element.path.endsWith(".apk")) {
+            if (element.path.contains("armeabi_v7a|arm64_v8a")) {
+              channelConfig.uploadApkInfo?.apkPath = element.path;
+            } else if (element.path.contains("armeabi_v7a")) {
+              channelConfig.uploadApkInfo?.apkPath32 = element.path;
+            } else if (element.path.contains("arm64_v8a")) {
+              channelConfig.uploadApkInfo?.apkPath64 = element.path;
+            } else {
+              channelConfig.uploadApkInfo?.apkPath = element.path;
+            }
+          } else if (element.path.endsWith(".aab")) {
+            //google市场
+          } else if (element.path.endsWith(".hap")) {
+            //华为市场
+          }
+        }
+      });
+    });
     // 方案A: 从目录筛选渠道包
-    
+    var hasApkAllEmpty =
+        allChannelConfigs
+            .where((channelConfig) => channelConfig.uploadApkInfo?.isAllEmpty == true)
+            .toList()
+            .length >
+        0;
+    if (hasApkAllEmpty) {
+      return false;
+    }
     //检查线上
     return true;
   }

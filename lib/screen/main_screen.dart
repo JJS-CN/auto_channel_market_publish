@@ -54,7 +54,6 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    print("build");
     return Container(
       color: Colors.white,
       child: Column(
@@ -431,10 +430,51 @@ class _MainScreenState extends State<MainScreen> {
                               ),
                             ),
                             _buildExcelItem(
-                              80,
-                              Text(
-                                "ALL 32 64",
-                                style: TextStyle(fontSize: 12, color: Colors.grey.shade600, height: 1),
+                              100,
+                              Row(
+                                children: [
+                                  Text(
+                                    "ALL",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: channel.uploadApkInfo?.apkPath.isNotEmpty == true
+                                          ? Colors.green
+                                          : Colors.grey.shade400,
+                                      height: 1,
+                                      fontWeight: channel.uploadApkInfo?.apkPath.isNotEmpty == true
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                    ),
+                                  ),
+                                  SizedBox(width: 5),
+                                  Text(
+                                    "32",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: channel.uploadApkInfo?.apkPath32.isNotEmpty == true
+                                          ? Colors.green
+                                          : Colors.grey.shade400,
+                                      height: 1,
+                                      fontWeight: channel.uploadApkInfo?.apkPath32.isNotEmpty == true
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                    ),
+                                  ),
+                                  SizedBox(width: 5),
+                                  Text(
+                                    "64",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: channel.uploadApkInfo?.apkPath64.isNotEmpty == true
+                                          ? Colors.green
+                                          : Colors.grey.shade400,
+                                      height: 1,
+                                      fontWeight: channel.uploadApkInfo?.apkPath64.isNotEmpty == true
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                             _buildExcelItem(
@@ -574,104 +614,40 @@ class _MainScreenState extends State<MainScreen> {
         spacing: 20,
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
-        children: [_buildPublishButton()],
+        children: [
+          GestureDetector(
+            onTap: () async {
+              ConfigManager().checkStartReady().then((value) {
+                isPublishReady = value;
+                setState(() {});
+                SmartDialog.showToast("检查完成");
+              });
+            },
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(color: Colors.blue, borderRadius: BorderRadius.circular(5)),
+              child: Text("检查数据", style: TextStyle(color: Colors.white)),
+            ),
+          ),
+          _buildPublishButton(),
+        ],
       ),
     );
   }
 
-  // _buildCheckPublishButton() {
-  //   return GestureDetector(
-  //     behavior: HitTestBehavior.opaque,
-  //     onTap: () async {},
-  //     child: Container(
-  //       padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-  //       decoration: BoxDecoration(color: Colors.blue, borderRadius: BorderRadius.circular(5)),
-  //       child: Text("检查数据", style: TextStyle(color: Colors.white)),
-  //     ),
-  //   );
-  // }
-
   _buildPublishButton() {
     return GestureDetector(
       onTap: () async {
-        ConfigManager().startApkPublish().then((value) {
-          if (value) {
-            SmartDialog.showToast("更新完成,请等待审核结果");
-          }
-        });
-        // if (!isPublishReady) {
-        //   return;
-        // }
-        // var projectConfig = ConfigManager().getCurrentProject();
-        // if (!projectConfig.updateConfig.isComplete()) {
-        //   SmartDialog.showToast("更新信息不完整,请检查");
-        //   return;
-        // }
-        // var allChannelConfigs = projectConfig.allChannelConfigs();
-
-        // ///渠道包是否更新
-        // var isApkUpdate = false;
-        // //是否有渠道包
-        // var isChannelNoApk = false;
-        // for (var channelConfig in allChannelConfigs) {
-        //   var originUploadApkInfoStr = channelConfig.uploadApkInfo?.toJson().toString();
-        //   channelConfig.uploadApkInfo = UploadApkInfo();
-        //   var dir = projectConfig.apkDir;
-        //   var files = Directory(dir).listSync(recursive: true);
-        //   for (var file in files) {
-        //     if (file.path.contains(projectConfig.packageName) &&
-        //         file.path.contains(projectConfig.updateConfig.versionCode.toString()) &&
-        //         file.path.contains(channelConfig.channel.name) &&
-        //         file.path.endsWith(".apk")) {
-        //       if (file.path.endsWith("-32.apk")) {
-        //         channelConfig.uploadApkInfo?.apkPath32 = file.path;
-        //       } else if (file.path.endsWith("-64.apk")) {
-        //         channelConfig.uploadApkInfo?.apkPath64 = file.path;
-        //       } else {
-        //         channelConfig.uploadApkInfo?.apkPath = file.path;
-        //       }
-        //     }
-        //   }
-        //   var newUploadApkInfoStr = channelConfig.uploadApkInfo?.toJson().toString();
-        //   if (originUploadApkInfoStr != newUploadApkInfoStr) {
-        //     isApkUpdate = true;
-        //   }
-        //   if (channelConfig.uploadApkInfo!.apkPath.isEmpty &&
-        //       channelConfig.uploadApkInfo!.apkPath32.isEmpty &&
-        //       channelConfig.uploadApkInfo!.apkPath64.isEmpty) {
-        //     isChannelNoApk = true;
-        //   }
-        // }
-        // if (isChannelNoApk) {
-        //   SmartDialog.showToast("部分渠道包不存在,请确认");
-        //   setState(() {});
-        //   return;
-        // }
-        // if (isApkUpdate) {
-        //   SmartDialog.showToast("渠道包有更新,请确认");
-        //   setState(() {});
-        //   return;
-        // }
-
-        // //筛选需要执行更新的渠道:不在审核中,且线上版本号小于当前版本号
-        // var needUpdateChannels = allChannelConfigs
-        //     .where(
-        //       (element) =>
-        //           element.auditInfo?.auditStatus != AuditStatus.auditing &&
-        //           (element.auditInfo?.releaseVersionCode ?? 0) < projectConfig.updateConfig.versionCode,
-        //     )
-        //     .toList();
-        // //临时剔除tencent
-        // needUpdateChannels.removeWhere((element) => element.channel == ChannelEnum.tencent);
-        // print("needUpdateChannels: ${needUpdateChannels.map((e) => e.channel.name).join(",")}");
-
-        // if (needUpdateChannels.isEmpty) {
-        //   SmartDialog.showToast("没有需要更新的渠道");
-        //   setState(() {});
-        //   return;
-        // }
-        // SmartDialog.showToast("更新完成,请等待审核结果");
-        // setState(() {});
+        ConfigManager()
+            .startApkPublish((channelConfig) {
+              setState(() {});
+            })
+            .then((value) {
+              setState(() {});
+              if (value) {
+                SmartDialog.showToast("更新完成,请等待审核结果");
+              }
+            });
       },
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),

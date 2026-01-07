@@ -158,7 +158,7 @@ class OppoManager extends BasicChannelManager<OppoConfig> {
   Future<bool> startPublish(UpdateConfig updateConfig) async {
     var apkPath = initConfig.uploadApkInfo?.apkPath;
     var app_info = await queryAppInfo();
-    if (app_info["audit_status"] != 1) {
+    if (initConfig.auditInfo?.auditStatus == AuditStatus.auditing) {
       SmartDialog.showToast("审核中", displayType: SmartToastType.onlyRefresh);
       return false;
     }

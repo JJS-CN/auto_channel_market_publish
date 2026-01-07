@@ -173,7 +173,6 @@ class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
     );
     List<String> pkgVersion = result.data["pkgVersion"];
     print("pkgVersion: $pkgVersion");
-    print(result.data.toString());
   }
 
   publishApp({int releaseType = 1}) async {

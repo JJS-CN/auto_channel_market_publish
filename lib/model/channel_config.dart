@@ -360,6 +360,8 @@ class UploadApkInfo {
   String apkPath32;
   String apkPath64;
 
+  bool get isAllEmpty => apkPath.isEmpty && apkPath32.isEmpty && apkPath64.isEmpty;
+
   factory UploadApkInfo.fromJson(Map<String, dynamic> json) => _$UploadApkInfoFromJson(json);
   Map<String, dynamic> toJson() => _$UploadApkInfoToJson(this);
 }
