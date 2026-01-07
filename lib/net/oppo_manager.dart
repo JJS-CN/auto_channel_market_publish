@@ -143,7 +143,7 @@ class OppoManager extends BasicChannelManager<OppoConfig> {
   }
 
   @override
-  Future<bool> checkChannelSuccess() async {
+  Future<bool> checkAuditStats() async {
     try {
       await queryAppInfo();
       initConfig.isSuccess = true;
@@ -201,7 +201,6 @@ class OppoInterceptor extends Interceptor {
       requestData.addAll(options.data);
     }
     requestData.addAll(options.queryParameters);
-
 
     //清空value为null的数据
     requestData.removeWhere((key, value) => value == null);

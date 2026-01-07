@@ -18,8 +18,6 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
   }
 
   final _dio = Dio();
-  String? _accessToken;
-  int? _expiresAt;
 
   ///获取token
   getToken() async {
@@ -34,17 +32,21 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
         "client_secret": initConfig.clientSecret,
       },
     );
-    _accessToken = result.data["access_token"];
+    initConfig.accessToken = result.data["access_token"];
     int expiresIn = result.data["expires_in"];
     DateTime now = DateTime.now();
-    _expiresAt = now.add(Duration(seconds: expiresIn)).millisecondsSinceEpoch;
-    _dio.options.headers["Authorization"] = "Bearer $_accessToken";
+    initConfig.expiresAt = now.add(Duration(seconds: expiresIn)).millisecondsSinceEpoch;
+    _dio.options.headers["Authorization"] = "Bearer ${initConfig.accessToken}";
     return result.data;
   }
 
   _checkAccessToken() async {
-    if (_accessToken == null || _expiresAt == null || DateTime.now().millisecondsSinceEpoch > _expiresAt!) {
+    if (initConfig.accessToken.isEmpty ||
+        initConfig.expiresAt <= 0 ||
+        DateTime.now().millisecondsSinceEpoch > initConfig.expiresAt) {
       await getToken();
+    } else {
+      _dio.options.headers["Authorization"] = "Bearer ${initConfig.accessToken}";
     }
   }
 
@@ -132,7 +134,7 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
     var objectId = await getFileUploadOption(filePath: filePath, fileType: fileType);
     await _checkAccessToken();
     var tempDio = Dio();
-    tempDio.options.headers["Authorization"] = "Bearer $_accessToken";
+    tempDio.options.headers["Authorization"] = "Bearer ${initConfig.accessToken}";
     tempDio.interceptors.add(LogInterceptor(requestBody: false, responseBody: true));
     tempDio.options.contentType = "multipart/form-data";
 
@@ -144,7 +146,7 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
         print("uploadFile progress: $sent, $total  ${sent / total * 100}%");
       },
     );
-   await updateFileInfo(objectId: objectId);
+    await updateFileInfo(objectId: objectId);
   }
 
   updateFileInfo({required int objectId}) async {
@@ -214,7 +216,7 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
   }
 
   @override
-  Future<bool> checkChannelSuccess() async {
+  Future<bool> checkAuditStats() async {
     try {
       await getAppInfo();
       initConfig.isSuccess = true;

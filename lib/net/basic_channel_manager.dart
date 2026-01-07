@@ -10,10 +10,9 @@ abstract class BasicChannelManager<T extends BaseChannelConfig> {
   }
 
   T get initConfig => _initConfig;
- 
 
   ///检查渠道配置是否成功
-  Future<bool> checkChannelSuccess();
+  Future<bool> checkAuditStats();
 
   ///开始发布
   Future<bool> startPublish(UpdateConfig updateConfig);

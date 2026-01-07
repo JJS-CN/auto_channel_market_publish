@@ -18,7 +18,7 @@ class ChannelInputWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: BoxConstraints(maxWidth: 450),
+      constraints: BoxConstraints(maxWidth: 600),
       margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
       child: Row(
         children: [

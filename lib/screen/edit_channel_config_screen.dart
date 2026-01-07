@@ -24,8 +24,8 @@ class _EditChannelConfigScreenState extends State<EditChannelConfigScreen> {
   @override
   void initState() {
     super.initState();
-    tempProjectConfig = ProjectConfig.fromJson(ConfigManager().currentProjectConfig.toJson());
-    originProjectConfig = ProjectConfig.fromJson(ConfigManager().currentProjectConfig.toJson());
+    tempProjectConfig = ProjectConfig.fromJson(ConfigManager().getCurrentProject().toJson());
+    originProjectConfig = ProjectConfig.fromJson(ConfigManager().getCurrentProject().toJson());
   }
 
   @override
@@ -43,7 +43,7 @@ class _EditChannelConfigScreenState extends State<EditChannelConfigScreen> {
           buildTencentCard(),
           SimpleButton("确认", () {
             //note 确认
-            ConfigManager().saveLocalConfig(tempProjectConfig);
+            ConfigManager().autoSaveProject(tempProjectConfig);
             GoRouter.of(context).pop();
           }),
         ],
@@ -198,6 +198,19 @@ class _EditChannelConfigScreenState extends State<EditChannelConfigScreen> {
             tencentConfig.secretKey = value;
           },
         ),
+        _buildInputRow(
+          label: "线上版本号",
+          hintText: "当线上版本号与配置不一致时修改",
+          keyboardType: TextInputType.number,
+          initialValue: tencentConfig.auditInfo?.releaseVersionCode.toString() ?? "-1",
+          onChanged: (value) {
+            if (value.isNotEmpty) {
+              tencentConfig.auditInfo?.releaseVersionCode = int.parse(value);
+            } else {
+              tencentConfig.auditInfo?.releaseVersionCode = -1;
+            }
+          },
+        ),
       ],
     );
   }
@@ -266,6 +279,7 @@ class _EditChannelConfigScreenState extends State<EditChannelConfigScreen> {
     String label = "",
     String initialValue = "",
     String hintText = "",
+    TextInputType keyboardType = TextInputType.text,
     required Function(String) onChanged,
   }) {
     return Container(
@@ -292,6 +306,7 @@ class _EditChannelConfigScreenState extends State<EditChannelConfigScreen> {
                     minLines: 1,
                     maxLines: null,
                     style: TextStyle(fontSize: 12),
+                    keyboardType: keyboardType,
                     controller: TextEditingController(text: initialValue),
                     decoration: InputDecoration(
                       fillColor: Colors.grey.shade100,

@@ -30,7 +30,7 @@ class XiaomiManager extends BasicChannelManager<XiaomiConfig> {
   final _dio = Dio();
 
   ///查询apk配置
-  Future<QueryApkResult> queryApkConfig() async {
+  Future<QueryApkResult> _queryApkConfig() async {
     var requestData = {"packageName": initConfig.packageName, "userName": initConfig.userName};
     Map<String, dynamic> sigData = {
       "password": initConfig.privateKey,
@@ -143,9 +143,9 @@ class XiaomiManager extends BasicChannelManager<XiaomiConfig> {
   }
 
   @override
-  Future<bool> checkChannelSuccess() async {
+  Future<bool> checkAuditStats() async {
     try {
-      await queryApkConfig();
+      await _queryApkConfig();
       initConfig.isSuccess = true;
       return true;
     } catch (e) {
@@ -157,11 +157,8 @@ class XiaomiManager extends BasicChannelManager<XiaomiConfig> {
   @override
   Future<bool> startPublish(UpdateConfig updateConfig) async {
     var apkPath = initConfig.uploadApkInfo?.apkPath;
-    var apkInfo = await queryApkConfig();
-    if (!apkInfo.updateVersion) {
-      SmartDialog.showToast("应用版本不能更新", displayType: SmartToastType.onlyRefresh);
-      return false;
-    }
+    var apkInfo = await _queryApkConfig();
+
     var result = await publish(
       synchroType: XiaomiSynchroType.apkUpdate,
       appName: apkInfo.packageInfo!.appName,

@@ -125,7 +125,7 @@ class _EditProjectConfigScreenState extends State<EditProjectConfigScreen> {
                                 ),
                                 TextButton(
                                   onPressed: () {
-                                    ConfigManager().deleteLocalConfig(tempProjectConfig);
+                                    ConfigManager().deleteProject(tempProjectConfig);
                                     SmartDialog.dismiss();
                                     GoRouter.of(context).pop();
                                   },
@@ -151,7 +151,7 @@ class _EditProjectConfigScreenState extends State<EditProjectConfigScreen> {
                   GestureDetector(
                     onTap: () {
                       if (tempProjectConfig.isComplete()) {
-                        ConfigManager().saveLocalConfig(tempProjectConfig);
+                        ConfigManager().autoSaveProject(tempProjectConfig);
                         GoRouter.of(context).pop();
                       }
                     },

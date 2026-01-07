@@ -176,7 +176,6 @@ class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
     print(result.data.toString());
   }
 
-
   publishApp({int releaseType = 1}) async {
     var result = await _dio.post(
       "/publish/v2/app-submit",
@@ -186,7 +185,7 @@ class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
   }
 
   @override
-  Future<bool> checkChannelSuccess() async {
+  Future<bool> checkAuditStats() async {
     try {
       await queryApkInfo();
       initConfig.isSuccess = true;

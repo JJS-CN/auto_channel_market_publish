@@ -131,7 +131,7 @@ class TencentManager extends BasicChannelManager<TencentConfig> {
   }
 
   @override
-  Future<bool> checkChannelSuccess() async {
+  Future<bool> checkAuditStats() async {
     try {
       await queryApkUpdateStatus();
       initConfig.isSuccess = true;

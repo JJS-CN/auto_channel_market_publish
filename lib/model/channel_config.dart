@@ -164,6 +164,8 @@ class XiaomiConfig extends BaseChannelConfig {
     super.packageName,
     super.channel = ChannelEnum.xiaomi,
     super.noteUrl = "https://dev.mi.com/xiaomihyperos/documentation/detail?pId=1134",
+    super.uploadApkInfo,
+    super.auditInfo,
   });
 
   String userName;
@@ -307,7 +309,11 @@ class TencentConfig extends BaseChannelConfig {
   String secretKey;
 
   @override
-  bool get isComplete => appId.isNotEmpty && userId.isNotEmpty && packageName.isNotEmpty;
+  bool get isComplete =>
+      appId.isNotEmpty &&
+      userId.isNotEmpty &&
+      packageName.isNotEmpty &&
+      (super.auditInfo?.releaseVersionCode ?? 0) > 0;
 
   @override
   BasicChannelManager get bindManager => TencentManager();
@@ -366,12 +372,15 @@ class AuditInfo {
     this.versionCode = 0,
     this.auditStatus = AuditStatus.known,
     this.auditReason = "",
+    this.checkUpdateTime = 0,
   });
   int releaseVersionCode;
   int versionCode;
   AuditStatus auditStatus;
   //审核意见
   String auditReason;
+  //上次检查接口状态时间
+  int checkUpdateTime;
 
   factory AuditInfo.fromJson(Map<String, dynamic> json) => _$AuditInfoFromJson(json);
   Map<String, dynamic> toJson() => _$AuditInfoToJson(this);

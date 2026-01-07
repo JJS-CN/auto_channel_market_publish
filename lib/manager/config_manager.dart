@@ -3,94 +3,172 @@ import 'dart:convert';
 
 import 'package:auto_channel_market_publish/manager/sp_manager.dart';
 import 'package:auto_channel_market_publish/model/channel_config.dart';
+import 'package:auto_channel_market_publish/model/enums.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 
 class ConfigManager {
   factory ConfigManager() => _instance;
   static final ConfigManager _instance = ConfigManager._internal();
   ConfigManager._internal() {}
 
-  StreamController<ProjectConfig> projectConfigStream = StreamController<ProjectConfig>.broadcast();
+  StreamController<List<ProjectConfig>> projectConfigStream =
+      StreamController<List<ProjectConfig>>.broadcast();
+
+  StreamController<bool> isPublishReadyStream = StreamController<bool>.broadcast();
 
   List<ProjectConfig> projectConfigs = <ProjectConfig>[];
-  ProjectConfig? _currentProjectConfig;
 
-  set currentProjectConfig(ProjectConfig projectConfig) {
-    _currentProjectConfig = projectConfig;
-  }
+  ProjectConfig _curProject = ProjectConfig.defaultProjectConfig();
 
-  ProjectConfig get currentProjectConfig => _currentProjectConfig ?? ProjectConfig.defaultProjectConfig();
-
+  ///加载本地所有配置
   loadLocalConfig() async {
     var value = SpManager.getStringList("projectConfigs");
     projectConfigs = value.map((e) => ProjectConfig.fromJson(json.decode(e))).toList();
-    _resetCurrentProjectConfig();
+    _curProject = projectConfigs.firstOrNull ?? ProjectConfig.defaultProjectConfig();
+    checkAllAuditStatus();
   }
 
-  loadDiskConfig(String value) async {
+  ///从外部导入文件:并保存到本地
+  saveLocalConfigForDisk(String value) {
     var list = json.decode(value) as List<dynamic>;
     projectConfigs = list.map((e) => ProjectConfig.fromJson(e)).toList();
-    _resetCurrentProjectConfig();
-    SpManager.setStringList("projectConfigs", projectConfigs.map((e) => json.encode(e.toJson())).toList());
+    _curProject = projectConfigs.firstOrNull ?? ProjectConfig.defaultProjectConfig();
+    saveToDisk();
+    checkAllAuditStatus();
   }
 
-  saveCurrentProject() {
-    if (_currentProjectConfig == null) {
+  ///保存当前项目到磁盘
+  saveToDisk() {
+    var list = projectConfigs.map((e) => e.toJson()).toList();
+    SpManager.setStringList("projectConfigs", list.map((e) => json.encode(e)).toList());
+    //通知所有监听者
+    projectConfigStream.sink.add(projectConfigs);
+  }
+
+  ///新增项目
+  addProject(ProjectConfig projectConfig) {
+    var maxId = projectConfigs.isEmpty ? 0 : projectConfigs.map((e) => e.id).reduce((a, b) => a > b ? a : b);
+    projectConfig.id = maxId + 1;
+    projectConfigs.add(projectConfig);
+    saveToDisk();
+  }
+
+  ///删除项目
+  deleteProject(ProjectConfig projectConfig) {
+    projectConfigs.removeWhere((element) => element.id == projectConfig.id);
+    _curProject = projectConfigs.firstOrNull ?? ProjectConfig.defaultProjectConfig();
+    saveToDisk();
+  }
+
+  ///更新项目
+  updateProject(ProjectConfig projectConfig) {
+    var index = projectConfigs.indexWhere((element) => element.id == projectConfig.id);
+    if (index == -1) {
       return;
     }
-    saveLocalConfig(_currentProjectConfig!);
+    projectConfigs[index] = projectConfig;
+    saveToDisk();
   }
 
-  saveLocalConfig(ProjectConfig projectConfig) {
+  ///保存当前项目
+  autoSaveProject(ProjectConfig projectConfig) {
     if (projectConfig.id <= 0) {
       //新增
-      var maxId = projectConfigs.isEmpty
-          ? 0
-          : projectConfigs.map((e) => e.id).reduce((a, b) => a > b ? a : b);
-      projectConfig.id = maxId + 1;
+      addProject(projectConfig);
     } else {
       //更新
-      projectConfigs.removeWhere((element) => element.id == projectConfig.id);
+      updateProject(projectConfig);
     }
-    projectConfig.defaultPackageName();
-    projectConfigs.add(projectConfig);
-    projectConfigs.sort((a, b) => a.id.compareTo(b.id));
-    SpManager.setStringList("projectConfigs", projectConfigs.map((e) => json.encode(e.toJson())).toList());
-    _resetCurrentProjectConfig();
   }
 
-  deleteLocalConfig(ProjectConfig projectConfig) {
-    projectConfigs.removeWhere((element) => element.id == projectConfig.id);
-    SpManager.setStringList("projectConfigs", projectConfigs.map((e) => json.encode(e.toJson())).toList());
-    _resetCurrentProjectConfig();
+  ProjectConfig getCurrentProject() {
+    return _curProject;
   }
 
-  clearAllLocalConfig() {
-    projectConfigs.clear();
-    SpManager.setStringList("projectConfigs", []);
-    _currentProjectConfig = ProjectConfig.defaultProjectConfig();
+  setCurrentProjectForClick(ProjectConfig projectConfig) {
+    _curProject = projectConfig;
   }
 
-  _resetCurrentProjectConfig() {
-    var data = projectConfigs.where((element) => element.id == _currentProjectConfig?.id).firstOrNull;
-    if (data == null) {
-      _currentProjectConfig = projectConfigs.firstOrNull ?? ProjectConfig.defaultProjectConfig();
-    } else {
-      _currentProjectConfig = data;
-    }
-    projectConfigStream.sink.add(_currentProjectConfig!);
-  }
-
-  checkChannelParamsSuccess() async {
-    var channelConfigs = currentProjectConfig.allChannelConfigs();
+  ///所有渠道网络是否通畅
+  bool allChannelNetworkSuccess() {
     var isAllSuccess = true;
+    var channelConfigs = _curProject.allChannelConfigs();
     for (var channelConfig in channelConfigs) {
       channelConfig.bindManager.init(channelConfig);
-      var isSuccess = await channelConfig.bindManager.checkChannelSuccess();
-      if (!isSuccess) {
+      var isSuccess = channelConfig.isSuccess;
+      if (isSuccess != true) {
         isAllSuccess = false;
       }
-      saveCurrentProject();
     }
     return isAllSuccess;
+  }
+
+  ///检查单个渠道
+  Future<bool> checkAuditStatus(BaseChannelConfig channelConfig) async {
+    channelConfig.bindManager.init(channelConfig);
+    projectConfigStream.sink.add(projectConfigs);
+    await channelConfig.bindManager.checkAuditStats();
+    projectConfigStream.sink.add(projectConfigs);
+    return true;
+  }
+
+  ///检查所有渠道审核状态
+  Future<bool> checkAllAuditStatus() async {
+    var channelConfigs = _curProject.allChannelConfigs();
+    _resetInitConfigs(configs: channelConfigs);
+
+    for (var channelConfig in channelConfigs) {
+      channelConfig.isSuccess = null;
+      projectConfigStream.sink.add(projectConfigs);
+      await channelConfig.bindManager.checkAuditStats();
+      projectConfigStream.sink.add(projectConfigs);
+    }
+    saveToDisk();
+    return true;
+  }
+
+  ///执行apk更新发布
+  Future<bool> startApkPublish() async {
+    //检查更新信息是否完整
+    if (_curProject.updateConfig.isComplete() != true) {
+      SmartDialog.showToast("更新信息不完整,请检查");
+      return false;
+    }
+    //检查渠道网络状态
+    var allNetworkSuccess = allChannelNetworkSuccess();
+    if (allNetworkSuccess != true) {
+      SmartDialog.showToast("渠道网络不通畅,请检查配置或网络");
+      return false;
+    }
+    //检查更新版本号是否与线上版本号相同
+    var allChannelConfigs = _curProject.allChannelConfigs();
+    //剔除线上>=本次版本号渠道
+    allChannelConfigs.removeWhere(
+      (channelConfig) =>
+          (channelConfig.auditInfo?.releaseVersionCode ?? 0) >= _curProject.updateConfig.versionCode,
+    );
+    //剔除正在审核中的渠道
+    allChannelConfigs.removeWhere(
+      (channelConfig) => channelConfig.auditInfo?.auditStatus == AuditStatus.auditing,
+    );
+    //检查剩余渠道数量
+    if (allChannelConfigs.isEmpty) {
+      SmartDialog.showToast("没有需要更新的渠道");
+      return false;
+    }
+    //查询更新所需的apk包
+    // 方案A: 从目录筛选渠道包
+    
+    //检查线上
+    return true;
+  }
+
+  ///重置渠道管理器初始化配置(项目切换,项目删除,项目新增,渠道修改后需要重置)
+  ///因为太多位置,所以在使用接口相关功能时调用一次比较好
+  _resetInitConfigs({List<BaseChannelConfig>? configs}) {
+    List<BaseChannelConfig> channelConfigs = configs ?? _curProject.allChannelConfigs();
+    for (var channelConfig in channelConfigs) {
+      channelConfig.bindManager.init(channelConfig);
+    }
   }
 }
