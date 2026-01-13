@@ -32,12 +32,12 @@ class ConfigManager {
   }
 
   ///从外部导入文件:并保存到本地
-  saveLocalConfigForDisk(String value) {
+  saveLocalConfigForDisk(String value) async {
     var list = json.decode(value) as List<dynamic>;
     projectConfigs = list.map((e) => ProjectConfig.fromJson(e)).toList();
     _curProject = projectConfigs.firstOrNull ?? ProjectConfig.defaultProjectConfig();
     saveToDisk();
-    checkAllAuditStatus();
+    await checkAllAuditStatus();
   }
 
   ///保存当前项目到磁盘
@@ -70,6 +70,7 @@ class ConfigManager {
       return;
     }
     projectConfigs[index] = projectConfig;
+    _curProject = projectConfig;
     saveToDisk();
   }
 

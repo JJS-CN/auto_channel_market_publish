@@ -39,8 +39,15 @@ class VivoManager extends BasicChannelManager<VivoConfig> {
     int status = data["status"];
     //审核不通过原因
     String unPassReason = data["unPassReason"] ?? "";
+    //note 通过网页接口查询线上版本号
+    var appstoreResult = await Dio(
+      BaseOptions(headers: {"Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"}),
+    ).post("https://h5-api.appstore.vivo.com.cn/detailInfo", data: {"appId": initConfig.appId});
+    var appstoreData = appstoreResult.data;
+    var releaseVersionCode = int.parse(appstoreData["version_code"]);
+    var releaseVersionName = appstoreData["version_name"];
     initConfig.auditInfo = AuditInfo(
-      releaseVersionCode: versionCode,
+      releaseVersionCode: releaseVersionCode,
       versionCode: versionCode,
       auditStatus: status == 3
           ? AuditStatus.auditSuccess
@@ -108,6 +115,7 @@ class VivoManager extends BasicChannelManager<VivoConfig> {
       initConfig.isSuccess = true;
       return true;
     } catch (e) {
+      print("VivoManager checkAuditStats error: $e");
       initConfig.isSuccess = false;
       return false;
     }

@@ -160,6 +160,11 @@ class TencentManager extends BasicChannelManager<TencentConfig> {
       file_path: filePath,
       file_md5: fileMd5,
     );
+    // /icon_file_serial_number
+    //应用图标文件上传流水号（1张512*512像素200KB以内的PNG格式直角图标）  备注：不变更则不填
+    //snapshots_file_serial_number
+    //应用截图文件上传流水号（支持多张，以竖线分隔，请上传4-5张。建议尺寸1080*1920px，最小不低于320*480px；所有图片宽高一致；JPG/PNG格式，单张图片不超过1M）
+
     var result = await publishApp(
       apk32_file_serial_number: upload_options["serial_number"],
       apk32_file_md5: upload_options["file_md5"],

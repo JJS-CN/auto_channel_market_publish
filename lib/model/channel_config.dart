@@ -59,7 +59,7 @@ class ProjectConfig {
       xiaomiConfig: XiaomiConfig(packageName: "", userName: "", publicPem: "", privateKey: ""),
       huaweiConfig: HuaweiConfig(packageName: "", appId: "", clientId: "", clientSecret: ""),
       honorConfig: HonorConfig(packageName: "", appId: "", clientId: "", clientSecret: ""),
-      vivoConfig: VivoConfig(packageName: "", access_key: "", accessSecret: ""),
+      vivoConfig: VivoConfig(packageName: "", access_key: "", accessSecret: "", appId: ""),
       oppoConfig: OppoConfig(packageName: "", client_id: "", client_secret: ""),
       tencentConfig: TencentConfig(packageName: "", appId: "", userId: "", secretKey: ""),
     );
@@ -250,6 +250,7 @@ class VivoConfig extends BaseChannelConfig {
   VivoConfig({
     required this.access_key,
     required this.accessSecret,
+    required this.appId,
     super.packageName,
     super.channel = ChannelEnum.vivo,
     super.noteUrl = "https://dev.vivo.com.cn/documentCenter/doc/326",
@@ -257,9 +258,11 @@ class VivoConfig extends BaseChannelConfig {
 
   String access_key;
   String accessSecret;
+  String appId;
 
   @override
-  bool get isComplete => access_key.isNotEmpty && accessSecret.isNotEmpty && packageName.isNotEmpty;
+  bool get isComplete =>
+      access_key.isNotEmpty && accessSecret.isNotEmpty && packageName.isNotEmpty && appId.isNotEmpty;
 
   @override
   BasicChannelManager get bindManager => VivoManager();

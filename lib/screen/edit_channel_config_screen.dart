@@ -43,6 +43,7 @@ class _EditChannelConfigScreenState extends State<EditChannelConfigScreen> {
           buildTencentCard(),
           SimpleButton("确认", () {
             //note 确认
+            print("tempProjectConfig: ${tempProjectConfig.toJson()}");
             ConfigManager().autoSaveProject(tempProjectConfig);
             GoRouter.of(context).pop();
           }),
@@ -139,6 +140,13 @@ class _EditChannelConfigScreenState extends State<EditChannelConfigScreen> {
             vivoConfig.accessSecret = value;
           },
         ),
+        _buildInputRow(
+          label: "AppId",
+          initialValue: vivoConfig.appId,
+          onChanged: (value) {
+            vivoConfig.appId = value;
+          },
+        ),
       ],
     );
   }
@@ -204,6 +212,7 @@ class _EditChannelConfigScreenState extends State<EditChannelConfigScreen> {
           keyboardType: TextInputType.number,
           initialValue: tencentConfig.auditInfo?.releaseVersionCode.toString() ?? "-1",
           onChanged: (value) {
+            tencentConfig.auditInfo ??= AuditInfo();
             if (value.isNotEmpty) {
               tencentConfig.auditInfo?.releaseVersionCode = int.parse(value);
             } else {

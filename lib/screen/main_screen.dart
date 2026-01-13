@@ -620,7 +620,9 @@ class _MainScreenState extends State<MainScreen> {
               ConfigManager().checkStartReady().then((value) {
                 isPublishReady = value;
                 setState(() {});
-                SmartDialog.showToast("检查完成");
+                if (value) {
+                  SmartDialog.showToast("检查完成,可以执行更新");
+                }
               });
             },
             child: Container(
