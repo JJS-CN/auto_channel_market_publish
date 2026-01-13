@@ -1,12 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:auto_channel_market_publish/manager/sp_manager.dart';
 import 'package:auto_channel_market_publish/model/channel_config.dart';
 import 'package:auto_channel_market_publish/model/enums.dart';
-import 'package:auto_channel_market_publish/net/huawei_manager.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 
 class ConfigManager {

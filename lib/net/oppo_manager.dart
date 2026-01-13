@@ -4,10 +4,8 @@ import 'dart:io';
 import 'package:auto_channel_market_publish/model/channel_config.dart';
 import 'package:auto_channel_market_publish/model/enums.dart';
 import 'package:auto_channel_market_publish/net/basic_channel_manager.dart';
-import 'package:auto_channel_market_publish/screen/main_screen.dart';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 
@@ -41,9 +39,9 @@ class OppoManager extends BasicChannelManager<OppoConfig> {
     //审核状态 1审核中 2审核通过 3审核不通过
     int audit_status = int.parse(result.data["audit_status"]);
     //审核状态描述
-    String audit_status_name = result.data["audit_status_name"];
+    //String audit_status_name = result.data["audit_status_name"];
     //更新资料审核状态 0:不在审核中 1:审核中
-    int update_info_check = result.data["update_info_check"];
+    //int update_info_check = result.data["update_info_check"];
     //打回附件链接
     String refuse_file = result.data["refuse_file"];
     int versionCode = int.parse(result.data["version_code"]);
@@ -92,8 +90,8 @@ class OppoManager extends BasicChannelManager<OppoConfig> {
 
   _getUploadOptions() async {
     var result = await _dio.get("/resource/v1/upload/get-upload-url");
-    var upload_url = result.data["upload_url"];
-    var sign = result.data["sign"];
+    //var upload_url = result.data["upload_url"];
+    //var sign = result.data["sign"];
     //{"upload_url":"https://api.open.oppomobile.com/api/utility/upload","sign":"fff63a0864cef2bf2c480bc9dc20e41d"}
     return result.data;
   }
@@ -166,7 +164,7 @@ class OppoManager extends BasicChannelManager<OppoConfig> {
     //当前只适配了apk上传
     var uploadData = await uploadFile(filePath: apkPath!);
     uploadData["cpu_code"] = 0;
-    var result = await publishApp(
+    var _ = await publishApp(
       oldAppInfo: app_info,
       apkInfo: uploadData,
       version_code: updateConfig.versionCode,

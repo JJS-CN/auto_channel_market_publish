@@ -4,10 +4,8 @@ import 'dart:io';
 import 'package:auto_channel_market_publish/model/channel_config.dart';
 import 'package:auto_channel_market_publish/model/enums.dart';
 import 'package:auto_channel_market_publish/net/basic_channel_manager.dart';
-import 'package:auto_channel_market_publish/screen/main_screen.dart';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 
@@ -68,7 +66,7 @@ class TencentManager extends BasicChannelManager<TencentConfig> {
     var tempDio = Dio();
     tempDio.options.contentType = "application/octet-stream";
 
-    var result = await tempDio.put(
+    var _ = await tempDio.put(
       pre_sign_url,
       data: File(file_path).readAsBytesSync(),
       onSendProgress: (int sent, int total) {
@@ -150,8 +148,10 @@ class TencentManager extends BasicChannelManager<TencentConfig> {
       return false;
     }
     var filePath = initConfig.uploadApkInfo?.apkPath;
-    var app_info = await queryApkConfig();
-    var apkFIle = File(filePath!);
+    var _ = await queryApkConfig();
+    if (filePath == null) {
+      return false;
+    }
     var fileName = filePath.split("/").last;
     var fileMd5 = (await compute(md5.convert, File(filePath).readAsBytesSync())).toString();
     var upload_options = await uploadFile(
@@ -165,7 +165,7 @@ class TencentManager extends BasicChannelManager<TencentConfig> {
     //snapshots_file_serial_number
     //应用截图文件上传流水号（支持多张，以竖线分隔，请上传4-5张。建议尺寸1080*1920px，最小不低于320*480px；所有图片宽高一致；JPG/PNG格式，单张图片不超过1M）
 
-    var result = await publishApp(
+    var _ = await publishApp(
       apk32_file_serial_number: upload_options["serial_number"],
       apk32_file_md5: upload_options["file_md5"],
       feature: updateConfig.updateDesc,

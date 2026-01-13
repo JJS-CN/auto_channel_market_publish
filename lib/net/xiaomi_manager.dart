@@ -9,7 +9,6 @@ import 'package:auto_channel_market_publish/net/basic_channel_manager.dart';
 import 'package:auto_channel_market_publish/net/xiaomi_helper.dart';
 import 'package:dio/dio.dart';
 import 'package:crypto/crypto.dart';
-import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 
 ///@Author jsji
 ///@Date 2025/10/11
@@ -46,7 +45,7 @@ class XiaomiManager extends BasicChannelManager<XiaomiConfig> {
     //允许更新信息
     var updateInfo = result.data["updateInfo"];
     //允许新增应用
-    var create = result.data["create"];
+    //var create = result.data["create"];
     //应用信息
     var packageInfo = result.data["packageInfo"];
     int onlineVersionCode = packageInfo["onlineVersionCode"];
@@ -70,7 +69,7 @@ class XiaomiManager extends BasicChannelManager<XiaomiConfig> {
     };
     var encrypted = await XiaomiHelper.encodeSIG(xiaomiConfig.publicPem, sigData);
     var fromData = {"RequestData": json.encode(requestData), "SIG": encrypted};
-    var result = await _dio.post("/dev/category", data: FormData.fromMap(fromData));
+    var _ = await _dio.post("/dev/category", data: FormData.fromMap(fromData));
     return Future.value(true);
   }
 
@@ -132,7 +131,7 @@ class XiaomiManager extends BasicChannelManager<XiaomiConfig> {
 
     var encrypted = await XiaomiHelper.encodeSIG(initConfig.publicPem, sigData);
     fromData["SIG"] = encrypted;
-    var result = await _dio.post(
+    var _ = await _dio.post(
       "/dev/push",
       data: FormData.fromMap(fromData),
       onSendProgress: (int sent, int total) {
@@ -159,7 +158,7 @@ class XiaomiManager extends BasicChannelManager<XiaomiConfig> {
     var apkPath = initConfig.uploadApkInfo?.apkPath;
     var apkInfo = await _queryApkConfig();
 
-    var result = await publish(
+    var _ = await publish(
       synchroType: XiaomiSynchroType.apkUpdate,
       appName: apkInfo.packageInfo!.appName,
       apkPath: apkPath,

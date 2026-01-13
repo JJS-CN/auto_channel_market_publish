@@ -4,7 +4,6 @@ import 'dart:io';
 
 import 'package:auto_channel_market_publish/const/screen_const.dart';
 import 'package:auto_channel_market_publish/manager/config_manager.dart';
-import 'package:auto_channel_market_publish/model/channel_config.dart';
 import 'package:auto_channel_market_publish/model/enums.dart';
 import 'package:auto_channel_market_publish/widget/channel_connection_status_widget.dart';
 import 'package:auto_channel_market_publish/widget/channel_input_widget.dart';
@@ -349,17 +348,17 @@ class _MainScreenState extends State<MainScreen> {
                   itemBuilder: (context, index) {
                     var channel = channelConfigs[index];
                     //根据状态 未配置,未启用,未验证,验证失败,验证成功,验证中 设置颜色
-                    var statusColor = Colors.grey;
-                    if (channel.isSuccess == null) {
-                      statusColor = Colors.grey;
-                    } else if (channel.isSuccess == true) {
-                      statusColor = Colors.green;
-                    } else if (channel.isSuccess == false) {
-                      statusColor = Colors.red;
-                    }
+                    // var statusColor = Colors.grey;
+                    // if (channel.isSuccess == null) {
+                    //   statusColor = Colors.grey;
+                    // } else if (channel.isSuccess == true) {
+                    //   statusColor = Colors.green;
+                    // } else if (channel.isSuccess == false) {
+                    //   statusColor = Colors.red;
+                    // }
 
                     var releaseVersionCode = channel.auditInfo?.releaseVersionCode ?? 0;
-                    var versionCode = channel.auditInfo?.versionCode ?? 0;
+                    //var versionCode = channel.auditInfo?.versionCode ?? 0;
                     var auditStatus = channel.auditInfo?.auditStatus ?? AuditStatus.known;
 
                     var onlineColor = Colors.grey;

@@ -1,14 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:ui';
 
 import 'package:auto_channel_market_publish/model/channel_config.dart';
 import 'package:auto_channel_market_publish/model/enums.dart';
 import 'package:auto_channel_market_publish/net/basic_channel_manager.dart';
-import 'package:auto_channel_market_publish/screen/main_screen.dart';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 
@@ -32,9 +29,9 @@ class VivoManager extends BasicChannelManager<VivoConfig> {
     );
     var data = result.data;
     int versionCode = int.parse(data["versionCode"]);
-    String versionName = data["versionName"];
+    //String versionName = data["versionName"];
     //上架状态 0:待上架 1:已上架 2:已下架
-    int saleStatus = data["saleStatus"];
+    //int saleStatus = data["saleStatus"];
     //审核状态 1:草稿 2:审核中 3:审核通过 4:审核不通过 5:撤销审核
     int status = data["status"];
     //审核不通过原因
@@ -45,7 +42,7 @@ class VivoManager extends BasicChannelManager<VivoConfig> {
     ).post("https://h5-api.appstore.vivo.com.cn/detailInfo", data: {"appId": initConfig.appId});
     var appstoreData = appstoreResult.data;
     var releaseVersionCode = int.parse(appstoreData["version_code"]);
-    var releaseVersionName = appstoreData["version_name"];
+    //var releaseVersionName = appstoreData["version_name"];
     initConfig.auditInfo = AuditInfo(
       releaseVersionCode: releaseVersionCode,
       versionCode: versionCode,
@@ -94,7 +91,7 @@ class VivoManager extends BasicChannelManager<VivoConfig> {
     int onlineType = 1,
   }) async {
     _dio.options.contentType = "application/x-www-form-urlencoded;charset=UTF-8";
-    var result = await _dio.post(
+    var _ = await _dio.post(
       "",
       data: {
         "method": "app.sync.update.app",
@@ -136,7 +133,7 @@ class VivoManager extends BasicChannelManager<VivoConfig> {
     var serialnumber = uploadData["serialnumber"];
     var versionCode = uploadData["versionCode"];
     var fileMd5 = uploadData["fileMd5"];
-    var result = await publishApp(
+    var _ = await publishApp(
       serialnumber: serialnumber,
       fileMd5: fileMd5,
       versionCode: versionCode,

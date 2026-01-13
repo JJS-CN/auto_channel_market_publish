@@ -5,7 +5,6 @@ import 'package:auto_channel_market_publish/model/enums.dart';
 import 'package:auto_channel_market_publish/net/basic_channel_manager.dart';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
-import 'package:file_picker/file_picker.dart';
 
 class HonorManager extends BasicChannelManager<HonorConfig> {
   factory HonorManager() => _instance;
@@ -73,12 +72,12 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
     var result = await _dio.get("/v1/publish/get-app-detail", queryParameters: {"appId": initConfig.appId});
     //引用基础信息
     var data = result.data["data"];
-    var basicInfo = data["basicInfo"];
-    String packageName = basicInfo["packageName"];
-    int appCategoryId = basicInfo["appCategoryId"];
+    //var basicInfo = data["basicInfo"];
+    //String packageName = basicInfo["packageName"];
+    //int appCategoryId = basicInfo["appCategoryId"];
     var releaseInfo = data["releaseInfo"];
     //线上版本信息
-    String releaseVersionName = releaseInfo["versionName"] ?? "";
+    //String releaseVersionName = releaseInfo["versionName"] ?? "";
     int releaseVersionCode = releaseInfo["versionCode"] ?? 0;
 
     var auditResultData = await getAppAuditResult();
@@ -125,8 +124,8 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
     var dataList = result.data["data"];
     var uploadOption = dataList.first;
     var objectId = uploadOption["objectId"];
-    var expireTime = uploadOption["expireTime"];
-    var uploadUrl = uploadOption["uploadUrl"];
+    //var expireTime = uploadOption["expireTime"];
+    //var uploadUrl = uploadOption["uploadUrl"];
     return objectId;
   }
 
@@ -138,7 +137,7 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
     tempDio.interceptors.add(LogInterceptor(requestBody: false, responseBody: true));
     tempDio.options.contentType = "multipart/form-data";
 
-    var result = await tempDio.post(
+    var _ = await tempDio.post(
       "https://appmarket-openapi-drcn.cloud.honor.com/openapi/v1/publish/file-upload",
       queryParameters: {"appId": initConfig.appId, "objectId": objectId},
       data: FormData.fromMap({"file": MultipartFile.fromFileSync(filePath)}),
@@ -198,7 +197,7 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
       queryParameters: {"appId": initConfig.appId},
       data: {"releaseType": releaseType},
     );
-    String auditId = result.data["data"];
+    //String auditId = result.data["data"];
     print(result.data.toString());
   }
 
@@ -210,8 +209,8 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
       queryParameters: {"appId": initConfig.appId},
     );
     var data = result.data["data"];
-    int auditResult = data["auditResult"];
-    int versionCode = data["versionCode"];
+    //int auditResult = data["auditResult"];
+    //int versionCode = data["versionCode"];
     return data;
   }
 
@@ -247,8 +246,8 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
       );
     });
     var filePath = initConfig.uploadApkInfo?.apkPath;
-    var uploadApkObjectId = await uploadFile(filePath: filePath!, fileType: 100);
-    var publishResult = await publishApp(releaseType: 1);
+    var _ = await uploadFile(filePath: filePath!, fileType: 100);
+    var _ = await publishApp(releaseType: 1);
     return true;
   }
 }

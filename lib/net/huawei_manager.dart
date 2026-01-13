@@ -3,9 +3,7 @@ import 'dart:io';
 import 'package:auto_channel_market_publish/model/channel_config.dart';
 import 'package:auto_channel_market_publish/model/enums.dart';
 import 'package:auto_channel_market_publish/net/basic_channel_manager.dart';
-import 'package:auto_channel_market_publish/screen/main_screen.dart';
 import 'package:dio/dio.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 
 class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
@@ -210,7 +208,7 @@ class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
     var uploadApkObjectId = await uploadFile(filePath: filePath!);
 
     await publishFileInfo(fileType: 5, filePath: filePath, objectId: uploadApkObjectId);
-    var publishResult = await publishApp(releaseType: 1);
+    var _ = await publishApp(releaseType: 1);
 
     return true;
   }
@@ -269,7 +267,7 @@ enum HuaweiReleaseState {
   pendingAuditFailed(13, "预审不通过");
 
   final int _value;
-  final String _name;
+  final String label;
 
   static HuaweiReleaseState fromValue(int value) {
     return HuaweiReleaseState.values.firstWhere(
@@ -280,7 +278,7 @@ enum HuaweiReleaseState {
 
   int get releaseState => _value;
 
-  const HuaweiReleaseState(this._value, this._name);
+  const HuaweiReleaseState(this._value, this.label);
 }
 
 class HuaweiUploadInfo {

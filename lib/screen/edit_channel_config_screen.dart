@@ -1,6 +1,5 @@
 import 'package:auto_channel_market_publish/manager/config_manager.dart';
 import 'package:auto_channel_market_publish/model/channel_config.dart';
-import 'package:auto_channel_market_publish/model/enums.dart';
 import 'package:auto_channel_market_publish/widget/simple_button.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';

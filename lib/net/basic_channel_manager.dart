@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:auto_channel_market_publish/model/channel_config.dart';
 
 abstract class BasicChannelManager<T extends BaseChannelConfig> {
