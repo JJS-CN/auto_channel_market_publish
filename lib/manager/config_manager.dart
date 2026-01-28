@@ -141,8 +141,6 @@ class ConfigManager {
     allChannelConfigs.removeWhere(
       (channelConfig) => channelConfig.auditInfo?.auditStatus == AuditStatus.auditing,
     );
-    print("allChannelConfigs: ${allChannelConfigs.length}");
-    print("allChannelConfigs: ${allChannelConfigs.map((e) => e.channel.name).join(",")}");
 
     await Future.wait(
       allChannelConfigs.map((channelConfig) async {
@@ -214,13 +212,12 @@ class ConfigManager {
       });
     });
     // 方案A: 从目录筛选渠道包
-    var hasApkAllEmpty =
-        allChannelConfigs
-            .where((channelConfig) => channelConfig.uploadApkInfo?.isAllEmpty == true)
-            .toList()
-            .length >
-        0;
-    if (hasApkAllEmpty) {
+    var apkEmptyList = allChannelConfigs
+        .where((channelConfig) => channelConfig.uploadApkInfo?.isAllEmpty == true)
+        .toList();
+
+    if (apkEmptyList.isNotEmpty) {
+      SmartDialog.showToast("${apkEmptyList.map((e) => e.channel.name).join(",")}的apk包未找到");
       return false;
     }
     //检查线上

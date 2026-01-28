@@ -11,7 +11,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:go_router/go_router.dart';
-import 'package:retrofit/http.dart';
 
 ///@Author jsji
 ///@Date 2025/8/21
@@ -421,7 +420,7 @@ class _MainScreenState extends State<MainScreen> {
                             GestureDetector(
                               onTap: () {
                                 channel.isEnable = !channel.isEnable;
-                                setState(() {});
+                                ConfigManager().saveToDisk();
                               },
                               child: Icon(
                                 channel.isEnable ? Icons.check_box : Icons.check_box_outline_blank,
@@ -758,12 +757,12 @@ class _MainScreenState extends State<MainScreen> {
         children: [
           GestureDetector(
             onTap: () async {
+              //保存一下
+              ConfigManager().saveToDisk();
               ConfigManager().checkStartReady().then((value) {
                 isPublishReady = value;
                 setState(() {});
                 if (value) {
-                  //保存一下
-                  ConfigManager().saveToDisk();
                   SmartDialog.showToast("检查完成,可以执行更新");
                 }
               });
