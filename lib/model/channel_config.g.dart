@@ -9,11 +9,15 @@ part of 'channel_config.dart';
 UpdateConfig _$UpdateConfigFromJson(Map<String, dynamic> json) => UpdateConfig(
   versionCode: (json['versionCode'] as num?)?.toInt() ?? 0,
   updateDesc: json['updateDesc'] as String? ?? "",
+  iconPath: json['iconPath'] as String? ?? "",
+  screenshotPaths: (json['screenshotPaths'] as List<dynamic>?)?.map((e) => e as String).toList() ?? [],
 );
 
 Map<String, dynamic> _$UpdateConfigToJson(UpdateConfig instance) => <String, dynamic>{
   'versionCode': instance.versionCode,
   'updateDesc': instance.updateDesc,
+  'iconPath': instance.iconPath,
+  'screenshotPaths': instance.screenshotPaths,
 };
 
 ProjectConfig _$ProjectConfigFromJson(Map<String, dynamic> json) => ProjectConfig(

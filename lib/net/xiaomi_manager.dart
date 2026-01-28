@@ -80,15 +80,13 @@ class XiaomiManager extends BasicChannelManager<XiaomiConfig> {
   publish({
     required XiaomiSynchroType synchroType,
     required String appName,
-    String? iconPath,
     String? apkPath,
     String? secondApkPath,
-    String? updateDesc,
-    List<String>? screenshotPaths,
+    required UpdateConfig updateConfig,
   }) async {
     XiaomiAppInfo appInfo = XiaomiAppInfo(appName: appName, packageName: initConfig.packageName);
-    if (updateDesc != null) {
-      appInfo.updateDesc = updateDesc;
+    if (updateConfig.updateDesc.isNotEmpty) {
+      appInfo.updateDesc = updateConfig.updateDesc;
     }
     var requestData = {
       "userName": initConfig.userName,
@@ -103,9 +101,12 @@ class XiaomiManager extends BasicChannelManager<XiaomiConfig> {
     };
 
     var fromData = <String, dynamic>{"RequestData": json.encode(requestData)};
-    if (iconPath != null) {
-      fromData["icon"] = MultipartFile.fromFileSync(iconPath);
-      sigData["sig"].add({"name": "icon", "hash": md5.convert(File(iconPath).readAsBytesSync()).toString()});
+    if (updateConfig.iconPath.isNotEmpty) {
+      fromData["icon"] = MultipartFile.fromFileSync(updateConfig.iconPath);
+      sigData["sig"].add({
+        "name": "icon",
+        "hash": md5.convert(File(updateConfig.iconPath).readAsBytesSync()).toString(),
+      });
     }
     if (apkPath != null) {
       fromData["apk"] = MultipartFile.fromFileSync(apkPath);
@@ -118,9 +119,9 @@ class XiaomiManager extends BasicChannelManager<XiaomiConfig> {
         "hash": md5.convert(File(secondApkPath).readAsBytesSync()).toString(),
       });
     }
-    if (screenshotPaths != null && screenshotPaths.isNotEmpty) {
-      for (int index = 0; index < screenshotPaths.length; index++) {
-        var screenshotPath = screenshotPaths[index];
+    if (updateConfig.screenshotPaths.isNotEmpty) {
+      for (int index = 0; index < updateConfig.screenshotPaths.length; index++) {
+        var screenshotPath = updateConfig.screenshotPaths[index];
         fromData["screenshot_${index + 1}"] = MultipartFile.fromFileSync(screenshotPath);
         sigData["sig"].add({
           "name": "screenshot_${index + 1}",
@@ -162,7 +163,7 @@ class XiaomiManager extends BasicChannelManager<XiaomiConfig> {
       synchroType: XiaomiSynchroType.apkUpdate,
       appName: apkInfo.packageInfo!.appName,
       apkPath: apkPath,
-      updateDesc: updateConfig.updateDesc,
+      updateConfig: updateConfig,
     );
 
     return true;

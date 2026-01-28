@@ -11,6 +11,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:go_router/go_router.dart';
+import 'package:retrofit/http.dart';
 
 ///@Author jsji
 ///@Date 2025/8/21
@@ -59,13 +60,23 @@ class _MainScreenState extends State<MainScreen> {
         children: [
           _buildTitleRow(),
           _buildProjectRow(),
-          _buildChannelRow(),
-          _buildUpgradeInfo(),
-          SizedBox(height: 20),
-          _buildFilterActionInfo(),
-          _buildFilterActionInfo2(),
-          SizedBox(height: 10),
-          _buildPublishRow(),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  _buildChannelRow(),
+                  SizedBox(height: 10),
+                  _buildUpgradeInfo(),
+                  SizedBox(height: 20),
+                  _buildFilterActionInfo(),
+                  _buildFilterActionInfo2(),
+                  SizedBox(height: 10),
+                  _buildPublishRow(),
+                  SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -285,7 +296,7 @@ class _MainScreenState extends State<MainScreen> {
 
   ///渠道配置组件
   Widget _buildChannelRow() {
-    var channelConfigs = ConfigManager().getCurrentProject().allChannelConfigs();
+    var channelConfigs = ConfigManager().getCurrentProject().completeChannelConfigs();
     return Container(
       constraints: BoxConstraints(minWidth: 600),
       margin: EdgeInsets.only(top: 10),
@@ -345,6 +356,7 @@ class _MainScreenState extends State<MainScreen> {
                   padding: EdgeInsets.zero,
                   scrollDirection: Axis.vertical,
                   shrinkWrap: true,
+                  itemCount: channelConfigs.length,
                   itemBuilder: (context, index) {
                     var channel = channelConfigs[index];
                     //根据状态 未配置,未启用,未验证,验证失败,验证成功,验证中 设置颜色
@@ -404,8 +416,20 @@ class _MainScreenState extends State<MainScreen> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
+                            GestureDetector(
+                              onTap: () {
+                                channel.isEnable = !channel.isEnable;
+                                setState(() {});
+                              },
+                              child: Icon(
+                                channel.isEnable ? Icons.check_box : Icons.check_box_outline_blank,
+                                size: 15,
+                                color: channel.isEnable ? Colors.green : Colors.grey,
+                              ),
+                            ),
+                            SizedBox(width: 5),
                             _buildExcelItem(100, ChannelConnectionStatusWidget(channelConfig: channel)),
                             _buildExcelItem(
                               80,
@@ -505,7 +529,6 @@ class _MainScreenState extends State<MainScreen> {
                       ),
                     );
                   },
-                  itemCount: channelConfigs.length,
                 ),
               ),
             ],
@@ -516,29 +539,148 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildUpgradeInfo() {
+    var updateConfig = ConfigManager().getCurrentProject().updateConfig;
+    var projectConfig = ConfigManager().getCurrentProject();
     return Container(
-      constraints: BoxConstraints(minWidth: 600),
+      constraints: BoxConstraints(minWidth: 600, maxWidth: 600),
       child: Column(
         children: [
-          ChannelInputWidget(
-            label: "版本号",
-            hintText: "请输入版本号(VersionCode)",
-            keyboardType: TextInputType.number,
-            initialValue: ConfigManager().getCurrentProject().updateConfig.versionCode.toString(),
-            onChanged: (value) {
-              if (value.isNotEmpty) {
-                ConfigManager().getCurrentProject().updateConfig.versionCode = int.parse(value);
-              } else {
-                ConfigManager().getCurrentProject().updateConfig.versionCode = 0;
-              }
-            },
+          Row(
+            children: [
+              ChannelInputWidget(
+                maxWidth: 200,
+                label: "版本号",
+                hintText: "请输入版本号(VersionCode)",
+                keyboardType: TextInputType.number,
+                initialValue: updateConfig.versionCode.toString(),
+                onChanged: (value) {
+                  if (value.isNotEmpty) {
+                    updateConfig.versionCode = int.parse(value);
+                  } else {
+                    updateConfig.versionCode = 0;
+                  }
+                },
+              ),
+              SizedBox(width: 10),
+              Text("Logo:", style: TextStyle(fontSize: 12, color: Colors.grey.shade600, height: 1)),
+              SizedBox(width: 5),
+              GestureDetector(
+                onTap: () {
+                  //note 选择logo
+                  FilePicker.platform
+                      .pickFiles(type: FileType.image, initialDirectory: projectConfig.apkDir + "/icon")
+                      .then((value) {
+                        if (value != null) {
+                          updateConfig.iconPath = value.files.first.path!;
+                          setState(() {});
+                        }
+                      });
+                },
+                child: Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade600)),
+                  child: updateConfig.iconPath.isEmpty
+                      ? Icon(Icons.add, size: 30, color: Colors.grey)
+                      : Stack(
+                          children: [
+                            Image.file(File(updateConfig.iconPath), width: 50, height: 50),
+                            Positioned(
+                              right: 0,
+                              child: GestureDetector(
+                                onTap: () {
+                                  updateConfig.iconPath = "";
+                                  setState(() {});
+                                },
+                                child: Icon(Icons.close_rounded, size: 15, color: Colors.grey),
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ],
           ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(width: 10),
+              Text("市场图:", style: TextStyle(fontSize: 12, color: Colors.grey.shade600, height: 1)),
+              SizedBox(width: 15),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        "请先将市场图按照顺序放到一个文件夹",
+                        style: TextStyle(fontSize: 10, color: Colors.grey.shade400, height: 1),
+                      ),
+                      SizedBox(width: 5),
+                      GestureDetector(
+                        onTap: () {
+                          if (updateConfig.screenshotPaths.isNotEmpty) {
+                            updateConfig.screenshotPaths.clear();
+                            setState(() {});
+                          } else {
+                            FilePicker.platform
+                                .pickFileAndDirectoryPaths(
+                                  initialDirectory: projectConfig.apkDir + "/screenshot",
+                                )
+                                .then((value) {
+                                  if (value != null) {
+                                    var dirPath = value.first;
+                                    if (dirPath.isNotEmpty) {
+                                      Directory(dirPath).listSync().forEach((element) {
+                                        updateConfig.screenshotPaths.add(element.path);
+                                        updateConfig.screenshotPaths.sort((a, b) => a.compareTo(b));
+                                      });
+                                      setState(() {});
+                                    }
+                                  }
+                                });
+                          }
+                        },
+                        child: Container(
+                          padding: EdgeInsets.all(3),
+                          color: Colors.grey.shade100,
+                          child: Icon(
+                            updateConfig.screenshotPaths.isEmpty ? Icons.folder : Icons.clear,
+                            size: 15,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (updateConfig.screenshotPaths.isNotEmpty)
+                    Container(
+                      margin: EdgeInsets.symmetric(vertical: 10),
+                      height: 120,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        shrinkWrap: true,
+                        itemCount: updateConfig.screenshotPaths.length,
+                        itemBuilder: (context, index) {
+                          var path = updateConfig.screenshotPaths[index];
+                          return Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 3),
+                            child: Image.file(File(path), height: 120),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+
           ChannelInputWidget(
             label: "更新说明",
             hintText: "请输入更新说明",
-            initialValue: ConfigManager().getCurrentProject().updateConfig.updateDesc,
+            initialValue: updateConfig.updateDesc,
             onChanged: (value) {
-              ConfigManager().getCurrentProject().updateConfig.updateDesc = value;
+              updateConfig.updateDesc = value;
             },
           ),
         ],
@@ -620,6 +762,8 @@ class _MainScreenState extends State<MainScreen> {
                 isPublishReady = value;
                 setState(() {});
                 if (value) {
+                  //保存一下
+                  ConfigManager().saveToDisk();
                   SmartDialog.showToast("检查完成,可以执行更新");
                 }
               });

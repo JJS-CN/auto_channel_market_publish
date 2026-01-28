@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
 
 class ChannelInputWidget extends StatelessWidget {
-  final String label;
-  final String hintText;
-  final String initialValue;
-  final Function(String) onChanged;
-  final TextInputType keyboardType;
   const ChannelInputWidget({
     super.key,
     this.label = "",
@@ -13,14 +8,23 @@ class ChannelInputWidget extends StatelessWidget {
     this.initialValue = "",
     required this.onChanged,
     this.keyboardType = TextInputType.text,
+    this.maxWidth = 600,
   });
+
+  final String label;
+  final String hintText;
+  final String initialValue;
+  final Function(String) onChanged;
+  final TextInputType keyboardType;
+  final double maxWidth;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: BoxConstraints(maxWidth: 600),
+      constraints: BoxConstraints(maxWidth: maxWidth),
       margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 60,

@@ -18,11 +18,20 @@ part 'channel_config.g.dart';
 
 @JsonSerializable()
 class UpdateConfig {
-  UpdateConfig({this.versionCode = 0, this.updateDesc = ""});
+  UpdateConfig({
+    this.versionCode = 0,
+    this.updateDesc = "",
+    this.iconPath = "",
+    this.screenshotPaths = const [],
+  });
   int versionCode;
   // String desc;
   // String brief;
   String updateDesc;
+  //新的图标路径
+  String iconPath;
+  //新的截图路径列表
+  List<String> screenshotPaths;
 
   bool isComplete() {
     if (versionCode == 0) {
@@ -117,6 +126,29 @@ class ProjectConfig {
       list.add(oppoConfig);
     }
     if (tencentConfig.isEnable && tencentConfig.isComplete) {
+      list.add(tencentConfig);
+    }
+    return list;
+  }
+
+  List<BaseChannelConfig> completeChannelConfigs() {
+    var list = <BaseChannelConfig>[];
+    if (xiaomiConfig.isComplete) {
+      list.add(xiaomiConfig);
+    }
+    if (huaweiConfig.isComplete) {
+      list.add(huaweiConfig);
+    }
+    if (honorConfig.isComplete) {
+      list.add(honorConfig);
+    }
+    if (vivoConfig.isComplete) {
+      list.add(vivoConfig);
+    }
+    if (oppoConfig.isComplete) {
+      list.add(oppoConfig);
+    }
+    if (tencentConfig.isComplete) {
       list.add(tencentConfig);
     }
     return list;
