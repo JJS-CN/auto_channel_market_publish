@@ -259,7 +259,7 @@ class HuaweiConfig extends BaseChannelConfig {
     super.packageName,
     super.channel = ChannelEnum.huawei,
     super.noteUrl =
-        "https://developer.huawei.com/consumer/cn/doc/app/agc-help-connect-api-obtain-server-auth-0000002271134661",
+        "https://developer.huawei.com/consumer/cn/doc/AppGallery-connect-References/agcapi-app-submit-0000001158245061",
   });
   String clientId;
   String clientSecret;

@@ -28,6 +28,7 @@ class VivoManager extends BasicChannelManager<VivoConfig> {
       data: {"method": "app.query.details", "packageName": initConfig.packageName},
     );
     var data = result.data;
+    print("VivoManager queryAppInfo data: $data");
     int versionCode = int.parse(data["versionCode"]);
     //String versionName = data["versionName"];
     //上架状态 0:待上架 1:已上架 2:已下架
@@ -59,24 +60,30 @@ class VivoManager extends BasicChannelManager<VivoConfig> {
   }
 
   ///上传文件
-  uploadFile({required String filePath}) async {
-    var digest = await compute(md5.convert, File(filePath).readAsBytesSync());
-    var fileMd5 = digest.toString();
+  uploadFile({required String filePath, required VivoUploadFileType type}) async {
     _dio.options.contentType = "multipart/form-data";
+    var requestData = {
+      "method": type.method,
+      "packageName": initConfig.packageName,
+      "file": MultipartFile.fromFileSync(filePath),
+    };
+    if (type == VivoUploadFileType.apk) {
+      var digest = await compute(md5.convert, File(filePath).readAsBytesSync());
+      var fileMd5 = digest.toString();
+      requestData["fileMd5"] = fileMd5;
+    }
+    print("VivoManager uploadFile start: $filePath");
     var result = await _dio.post(
       "",
-      data: FormData.fromMap({
-        "method": "app.upload.apk.app",
-        "packageName": initConfig.packageName,
-        "file": MultipartFile.fromFileSync(filePath),
-        "fileMd5": fileMd5,
-      }),
+      data: FormData.fromMap(requestData),
       onSendProgress: (int sent, int total) {
-        print("uploadFile progress: $sent, $total  ${sent / total * 100}%");
+        var progress = sent / total * 100;
+        if (progress % 20 == 0) {
+          print("uploadFile progress: $progress%");
+        }
       },
     );
     var data = result.data;
-    data["versionCode"] = int.parse(data["versionCode"]);
     return data;
   }
 
@@ -89,20 +96,26 @@ class VivoManager extends BasicChannelManager<VivoConfig> {
     required int versionCode,
     String? updateDesc,
     int onlineType = 1,
+    String icon = "",
+    List<String> screenshots = const [],
   }) async {
     _dio.options.contentType = "application/x-www-form-urlencoded;charset=UTF-8";
-    var _ = await _dio.post(
-      "",
-      data: {
-        "method": "app.sync.update.app",
-        "packageName": initConfig.packageName,
-        "apk": serialnumber,
-        "fileMd5": fileMd5,
-        "versionCode": versionCode,
-        "onlineType": onlineType,
-        "updateDesc": updateDesc,
-      },
-    );
+    var requestData = {
+      "method": "app.sync.update.app",
+      "packageName": initConfig.packageName,
+      "apk": serialnumber,
+      "fileMd5": fileMd5,
+      "versionCode": versionCode,
+      "onlineType": onlineType,
+      "updateDesc": updateDesc,
+    };
+    if (icon.isNotEmpty) {
+      requestData["icon"] = icon;
+    }
+    if (screenshots.isNotEmpty) {
+      requestData["screenshot"] = screenshots.join(",");
+    }
+    var _ = await _dio.post("", data: requestData);
   }
 
   @override
@@ -129,15 +142,33 @@ class VivoManager extends BasicChannelManager<VivoConfig> {
       SmartDialog.showToast("审核中", displayType: SmartToastType.onlyRefresh);
       return false;
     }
-    var uploadData = await uploadFile(filePath: apkPath!);
+    //icon文件上传返回的流水号
+    String iconSerialnumber = "";
+    if (updateConfig.iconPath.isNotEmpty) {
+      //上传图标
+      var uploadData = await uploadFile(filePath: updateConfig.iconPath, type: VivoUploadFileType.icon);
+      iconSerialnumber = uploadData["serialnumber"];
+    }
+
+    List<String> screenshotSerialnumbers = [];
+    if (updateConfig.screenshotPaths.isNotEmpty) {
+      //上传截图
+      for (var screenshotPath in updateConfig.screenshotPaths) {
+        var uploadData = await uploadFile(filePath: screenshotPath, type: VivoUploadFileType.screenshot);
+        screenshotSerialnumbers.add(uploadData["serialnumber"]);
+      }
+    }
+    var uploadData = await uploadFile(filePath: apkPath!, type: VivoUploadFileType.apk);
     var serialnumber = uploadData["serialnumber"];
-    var versionCode = uploadData["versionCode"];
+    var versionCode = int.parse(uploadData["versionCode"]);
     var fileMd5 = uploadData["fileMd5"];
     var _ = await publishApp(
       serialnumber: serialnumber,
       fileMd5: fileMd5,
       versionCode: versionCode,
       updateDesc: updateConfig.updateDesc,
+      icon: iconSerialnumber,
+      screenshots: screenshotSerialnumbers,
     );
     return true;
   }
@@ -212,4 +243,13 @@ class VivoInterceptor extends Interceptor {
       );
     }
   }
+}
+
+enum VivoUploadFileType {
+  icon("app.upload.icon"),
+  screenshot("app.upload.screenshot"),
+  apk("app.upload.apk.app");
+
+  final String method;
+  const VivoUploadFileType(this.method);
 }

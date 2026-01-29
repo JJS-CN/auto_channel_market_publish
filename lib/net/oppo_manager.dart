@@ -65,17 +65,21 @@ class OppoManager extends BasicChannelManager<OppoConfig> {
   ///上传文件
   ///[requestUrl] 请求url
   ///[type] 文件类型，包括照片、APK 包、其它，值是：photo、apk、resource
-  uploadFile({required String filePath, String type = "apk"}) async {
+  uploadFile({required String filePath, required OppoUploadFileType type}) async {
     var upload_options = await _getUploadOptions();
     var upload_url = upload_options["upload_url"];
     var sign = upload_options["sign"];
     var tempDio = Dio();
     tempDio.options.contentType = "multipart/form-data";
+    print("uploadFile start: $filePath");
     var result = await tempDio.post(
       upload_url,
-      data: FormData.fromMap({"type": type, "sign": sign, "file": MultipartFile.fromFileSync(filePath)}),
+      data: FormData.fromMap({"type": type.name, "sign": sign, "file": MultipartFile.fromFileSync(filePath)}),
       onSendProgress: (int sent, int total) {
-        print("uploadFile progress: $sent, $total  ${sent / total * 100}%");
+        var progress = sent / total * 100;
+        if (progress % 20 == 0) {
+          print("uploadFile progress: $progress%");
+        }
       },
     );
     //{errno: 0, data: {url: http://storedl1.nearme.com.cn/apk/tmp_apk/202512/11/432d87b9d1e36deb834e74c7ea72c55e.apk, uri_path: /apk/tmp_apk/202512/11/432d87b9d1e36deb834e74c7ea72c55e.apk, md5: a6b0a941f15f2496f30d71dce88e3b66, file_size: 163388885, file_extension: apk, width: 0, height: 0, id: e53935b8-c847-435c-a948-751fe138c1e2, sign: 1e69883fc54e0c1354a0c8209b20598a}, logid: e53935b8-c847-435c-a948-751fe138c1e2}
@@ -160,9 +164,24 @@ class OppoManager extends BasicChannelManager<OppoConfig> {
       SmartDialog.showToast("审核中", displayType: SmartToastType.onlyRefresh);
       return false;
     }
+    if (updateConfig.iconPath.isNotEmpty) {
+      //上传图标
+      var uploadData = await uploadFile(filePath: updateConfig.iconPath, type: OppoUploadFileType.photo);
+      var url = uploadData["url"];
+      app_info["icon_url"] = url;
+    }
+    if (updateConfig.screenshotPaths.isNotEmpty) {
+      //上传截图
+      List<String> urlList = [];
+      for (var screenshotPath in updateConfig.screenshotPaths) {
+        var uploadData = await uploadFile(filePath: screenshotPath, type: OppoUploadFileType.photo);
+        urlList.add(uploadData["url"]);
+      }
+      app_info["pic_url"] = urlList.join(",");
+    }
 
     //当前只适配了apk上传
-    var uploadData = await uploadFile(filePath: apkPath!);
+    var uploadData = await uploadFile(filePath: apkPath!, type: OppoUploadFileType.apk);
     uploadData["cpu_code"] = 0;
     var _ = await publishApp(
       oldAppInfo: app_info,
@@ -242,3 +261,5 @@ class OppoInterceptor extends Interceptor {
     }
   }
 }
+
+enum OppoUploadFileType { photo, apk, resource }
