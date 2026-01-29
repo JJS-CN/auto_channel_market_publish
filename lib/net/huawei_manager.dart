@@ -151,28 +151,57 @@ class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
     return uploadOptions.objectId;
   }
 
-  ///更新文件信息
-  publishFileInfo({
-    int releaseType = 1,
-    required int fileType,
-    required String filePath,
-    required String objectId,
-  }) async {
+  ///更新apk信息
+  publishApkInfo({required String filePath}) async {
+    var uploadApkObjectId = await uploadFile(filePath: filePath);
     var fileName = filePath.split("/").last;
     var result = await _dio.put(
       "/publish/v2/app-file-info",
-      queryParameters: {"releaseType": releaseType, "appId": initConfig.appId},
+      queryParameters: {"appId": initConfig.appId},
       data: {
-        "fileType": fileType,
+        "fileType": HuaweiPublishFileType.apk.fileType,
         "files": [
-          {"fileName": fileName, "fileDestUrl": objectId},
+          {"fileName": fileName, "fileDestUrl": uploadApkObjectId},
         ],
       },
     );
-    List<String> pkgVersion = result.data["pkgVersion"];
-    print("pkgVersion: $pkgVersion");
   }
 
+  ///更新icon信息
+  publishIconInfo({required String filePath}) async {
+    if (filePath.isEmpty) {
+      return;
+    }
+    var uploadIconObjectId = await uploadFile(filePath: filePath);
+    var result = await _dio.put(
+      "/publish/v2/app-file-info",
+      queryParameters: {"appId": initConfig.appId},
+      data: {
+        "fileType": HuaweiPublishFileType.icon.fileType,
+        "files": [
+          {"fileDestUrl": uploadIconObjectId},
+        ],
+      },
+    );
+  }
+
+  ///更新市场图信息
+  publishScreenshotInfos({required List<String> filePathList}) async {
+    if (filePathList.isEmpty) {
+      return;
+    }
+    List<Map<String, dynamic>> screenshotFiles = <Map<String, dynamic>>[];
+    for (var filePath in filePathList) {
+      var uploadScreenshotObjectId = await uploadFile(filePath: filePath);
+      screenshotFiles.add({"fileDestUrl": uploadScreenshotObjectId});
+    }
+    var result = await _dio.put(
+      "/publish/v2/app-file-info",
+      queryParameters: {"appId": initConfig.appId},
+      data: {"fileType": HuaweiPublishFileType.screenshot.fileType, "files": screenshotFiles},
+    );
+  }
+ 
   publishApp({int releaseType = 1}) async {
     var result = await _dio.post(
       "/publish/v2/app-submit",
@@ -196,18 +225,17 @@ class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
 
   @override
   Future<bool> startPublish(UpdateConfig updateConfig) async {
-    publishLanguageInfo(newFeatures: updateConfig.updateDesc);
-    var filePath = initConfig.uploadApkInfo?.apkPath;
-    var appInfo = await queryApkInfo();
-    if (appInfo["releaseState"] == HuaweiReleaseState.audit ||
-        appInfo["releaseState"] == HuaweiReleaseState.upgradeAudit) {
+    var _ = await queryApkInfo();
+    if (initConfig.auditInfo?.auditStatus == AuditStatus.auditing) {
       SmartDialog.showToast("审核中", displayType: SmartToastType.onlyRefresh);
       return false;
     }
+    await publishLanguageInfo(newFeatures: updateConfig.updateDesc);
+    await publishIconInfo(filePath: updateConfig.iconPath);
+    await publishScreenshotInfos(filePathList: updateConfig.screenshotPaths);
 
-    var uploadApkObjectId = await uploadFile(filePath: filePath!);
-
-    await publishFileInfo(fileType: 5, filePath: filePath, objectId: uploadApkObjectId);
+    var apkPath = initConfig.uploadApkInfo?.apkPath;
+    await publishApkInfo(filePath: apkPath!);
     var _ = await publishApp(releaseType: 1);
 
     return true;
@@ -299,4 +327,20 @@ class HuaweiUploadUrlOptions {
   String url;
   String method;
   Map<String, dynamic> headers;
+}
+
+//更新应用文件信息v2
+enum HuaweiPublishFileType {
+  icon(0),
+  screenshot(2),
+  apk(5);
+
+  final int fileType;
+  const HuaweiPublishFileType(this.fileType);
+}
+
+class HuaweiFileInfoV2 {
+  HuaweiFileInfoV2({required this.fileName, required this.fileDestUrl});
+  String fileName;
+  String fileDestUrl;
 }
