@@ -566,6 +566,7 @@ class _MainScreenState extends State<MainScreen> {
               GestureDetector(
                 onTap: () {
                   //note 选择logo
+                  //todo 需要检查512*512,并且不超过200kb的图片
                   FilePicker.platform
                       .pickFiles(type: FileType.image, initialDirectory: projectConfig.apkDir + "/icon")
                       .then((value) {
@@ -618,6 +619,7 @@ class _MainScreenState extends State<MainScreen> {
                       SizedBox(width: 5),
                       GestureDetector(
                         onTap: () {
+                          //todo 需要检查不超过1M
                           if (updateConfig.screenshotPaths.isNotEmpty) {
                             updateConfig.screenshotPaths.clear();
                             setState(() {});

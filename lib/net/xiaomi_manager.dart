@@ -136,7 +136,10 @@ class XiaomiManager extends BasicChannelManager<XiaomiConfig> {
       "/dev/push",
       data: FormData.fromMap(fromData),
       onSendProgress: (int sent, int total) {
-        print("xiaomi publish progress: $sent, $total  ${sent / total * 100}%");
+        var progress = sent / total * 100;
+        if (progress % 20 == 0) {
+          print("xiaomi publish progress: $progress%");
+        }
       },
     );
     return Future.value(true);

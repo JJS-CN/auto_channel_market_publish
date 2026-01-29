@@ -49,10 +49,10 @@ class TencentManager extends BasicChannelManager<TencentConfig> {
     return {"pre_sign_url": pre_sign_url, "serial_number": serial_number};
   }
 
-  ///上传文件
+  ///上传文件 [file_type] img, apk, pdf, video, txt
   Future<Map<String, dynamic>> uploadFile({
     required String file_name,
-    required String file_type,
+    required TencentUploadFileType file_type,
     required String file_path,
     required String file_md5,
   }) async {
@@ -60,17 +60,20 @@ class TencentManager extends BasicChannelManager<TencentConfig> {
       pkg_name: initConfig.packageName,
       app_id: initConfig.appId,
       file_name: file_name,
-      file_type: file_type,
+      file_type: file_type.name,
     );
     var pre_sign_url = upload_options["pre_sign_url"];
     var tempDio = Dio();
     tempDio.options.contentType = "application/octet-stream";
-
+    print("TencentManager uploadFile 开始上传: $file_path");
     var _ = await tempDio.put(
       pre_sign_url,
       data: File(file_path).readAsBytesSync(),
       onSendProgress: (int sent, int total) {
-        print("TencentManager uploadFile progress: $sent, $total  ${sent / total * 100}%");
+        var progress = sent / total * 100;
+        if (progress % 20 == 0) {
+          print("TencentManager uploadFile progress: $progress%");
+        }
       },
     );
     upload_options["file_md5"] = file_md5;
@@ -84,19 +87,25 @@ class TencentManager extends BasicChannelManager<TencentConfig> {
     String? apk32_file_serial_number,
     String? apk32_file_md5,
     String? feature,
+    String icon_file_serial_number = "",
+    String snapshots_file_serial_number = "",
     int deploy_type = 1,
   }) async {
-    var result = await _dio.post(
-      "/update_app",
-      data: {
-        "pkg_name": initConfig.packageName,
-        "app_id": initConfig.appId,
-        "apk32_file_serial_number": apk32_file_serial_number,
-        "apk32_file_md5": apk32_file_md5,
-        "feature": feature,
-        "deploy_type": deploy_type,
-      },
-    );
+    var data = {
+      "pkg_name": initConfig.packageName,
+      "app_id": initConfig.appId,
+      "apk32_file_serial_number": apk32_file_serial_number,
+      "apk32_file_md5": apk32_file_md5,
+      "feature": feature,
+      "deploy_type": deploy_type,
+    };
+    if (icon_file_serial_number.isNotEmpty) {
+      data["icon_file_serial_number"] = icon_file_serial_number;
+    }
+    if (snapshots_file_serial_number.isNotEmpty) {
+      data["snapshots_file_serial_number"] = snapshots_file_serial_number;
+    }
+    var result = await _dio.post("/update_app", data: data);
     return result.data;
   }
 
@@ -156,7 +165,7 @@ class TencentManager extends BasicChannelManager<TencentConfig> {
     var fileMd5 = (await compute(md5.convert, File(filePath).readAsBytesSync())).toString();
     var upload_options = await uploadFile(
       file_name: fileName,
-      file_type: "apk",
+      file_type: TencentUploadFileType.apk,
       file_path: filePath,
       file_md5: fileMd5,
     );
@@ -164,12 +173,48 @@ class TencentManager extends BasicChannelManager<TencentConfig> {
     //应用图标文件上传流水号（1张512*512像素200KB以内的PNG格式直角图标）  备注：不变更则不填
     //snapshots_file_serial_number
     //应用截图文件上传流水号（支持多张，以竖线分隔，请上传4-5张。建议尺寸1080*1920px，最小不低于320*480px；所有图片宽高一致；JPG/PNG格式，单张图片不超过1M）
+    var iconFileSerialNumber = "";
+    if (updateConfig.iconPath.isNotEmpty) {
+      var iconFilePath = updateConfig.iconPath;
+      var iconFileName = iconFilePath.split("/").last;
+      var iconFileMd5 = (await compute(md5.convert, File(iconFilePath).readAsBytesSync())).toString();
+      var iconUploadOptions = await uploadFile(
+        file_name: iconFileName,
+        file_type: TencentUploadFileType.img,
+        file_path: iconFilePath,
+        file_md5: iconFileMd5,
+      );
+      iconFileSerialNumber = iconUploadOptions["serial_number"];
+    }
 
+    var snapshotsFileSerialNumber = "";
+    if (updateConfig.screenshotPaths.isNotEmpty) {
+      for (var screenshotPath in updateConfig.screenshotPaths) {
+        var screenshotFileName = screenshotPath.split("/").last;
+        var screenshotFileMd5 = (await compute(
+          md5.convert,
+          File(screenshotPath).readAsBytesSync(),
+        )).toString();
+        var screenshotUploadOptions = await uploadFile(
+          file_name: screenshotFileName,
+          file_type: TencentUploadFileType.img,
+          file_path: screenshotPath,
+          file_md5: screenshotFileMd5,
+        );
+        var nowSerialNumber = screenshotUploadOptions["serial_number"];
+        if (snapshotsFileSerialNumber.isNotEmpty) {
+          snapshotsFileSerialNumber += "|";
+        }
+        snapshotsFileSerialNumber += nowSerialNumber;
+      }
+    }
     var _ = await publishApp(
       apk32_file_serial_number: upload_options["serial_number"],
       apk32_file_md5: upload_options["file_md5"],
       feature: updateConfig.updateDesc,
       deploy_type: 1,
+      icon_file_serial_number: iconFileSerialNumber,
+      snapshots_file_serial_number: snapshotsFileSerialNumber,
     );
     var auditInfo = initConfig.auditInfo ?? AuditInfo();
     auditInfo.auditStatus = AuditStatus.auditing;
@@ -229,3 +274,5 @@ class TencentInterceptor extends Interceptor {
     }
   }
 }
+
+enum TencentUploadFileType { img, apk, pdf, video, txt }
