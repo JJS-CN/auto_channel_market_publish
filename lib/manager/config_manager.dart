@@ -10,6 +10,7 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 class ConfigManager {
   factory ConfigManager() => _instance;
   static final ConfigManager _instance = ConfigManager._internal();
+
   ConfigManager._internal() {}
 
   StreamController<List<ProjectConfig>> projectConfigStream =
@@ -194,11 +195,11 @@ class ConfigManager {
             element.path.contains(_curProject.updateConfig.versionCode.toString())) {
           //渠道号匹配上,说明是这个渠道包的
           if (element.path.endsWith(".apk")) {
-            if (element.path.contains("armeabi_v7a|arm64_v8a")) {
+            if (element.path.contains("all")) {
               channelConfig.uploadApkInfo?.apkPath = element.path;
-            } else if (element.path.contains("armeabi_v7a")) {
+            } else if (element.path.contains("armeabi-v7a")) {
               channelConfig.uploadApkInfo?.apkPath32 = element.path;
-            } else if (element.path.contains("arm64_v8a")) {
+            } else if (element.path.contains("arm64-v8a")) {
               channelConfig.uploadApkInfo?.apkPath64 = element.path;
             } else {
               channelConfig.uploadApkInfo?.apkPath = element.path;
