@@ -9,11 +9,14 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
   factory HuaweiManager() => _instance;
   static final HuaweiManager _instance = HuaweiManager._internal();
+
   HuaweiManager._internal() {
     _dio.options.baseUrl = "https://connect-api.cloud.huawei.com/api";
     _dio.options.contentType = "application/json;charset=UTF-8";
     _dio.interceptors.add(HuaweiInterceptor());
-    _dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
+    _dio.interceptors.add(
+      LogInterceptor(requestBody: true, responseBody: true),
+    );
   }
 
   final _dio = Dio();
@@ -27,8 +30,13 @@ class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
     };
     var _tempDio = Dio();
     _tempDio.options.contentType = "application/json;charset=UTF-8";
-    _tempDio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
-    var result = await _tempDio.post("https://connect-api.cloud.huawei.com/api/oauth2/v1/token", data: data);
+    _tempDio.interceptors.add(
+      LogInterceptor(requestBody: true, responseBody: true),
+    );
+    var result = await _tempDio.post(
+      "https://connect-api.cloud.huawei.com/api/oauth2/v1/token",
+      data: data,
+    );
     //{"access_token":"eyJraWQiOiJJbnBuMjNUaUJZbnJCb1RiYzJwSDhMaHdTMFdwUUFLViIsInR5cCI6IkpXVCIsImFsZyI6IkhTMjU2In0.eyJzdWIiOiIxNDUxNTQyMzM1MTY1ODU2MDY0IiwiZG4iOjEsImNsaWVudF90eXBlIjoxLCJleHAiOjE3NjQ3NTY2NzIsImlhdCI6MTc2NDU4Mzg3Mn0.xtwd7XoeJGd2mDyOrndLre5o219bh4yB77lKyI0km9I","expires_in":172799}
     var accessToken = result.data["access_token"];
     var expiresIn = result.data["expires_in"];
@@ -41,7 +49,10 @@ class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
 
   ///查询应用信息 appid可以直接从后台获取
   queryApkInfo() async {
-    var result = await _dio.get("/publish/v2/app-info", queryParameters: {"appId": initConfig.appId});
+    var result = await _dio.get(
+      "/publish/v2/app-info",
+      queryParameters: {"appId": initConfig.appId},
+    );
     //审核状态
     var appInfo = result.data["appInfo"];
     var releaseState = HuaweiReleaseState.fromValue(appInfo["releaseState"]);
@@ -56,7 +67,9 @@ class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
     initConfig.auditInfo = AuditInfo(
       releaseVersionCode: onShelfVersionCode,
       versionCode: versionCode,
-      auditStatus: releaseState == HuaweiReleaseState.audit || releaseState == HuaweiReleaseState.upgradeAudit
+      auditStatus:
+          releaseState == HuaweiReleaseState.audit ||
+              releaseState == HuaweiReleaseState.upgradeAudit
           ? AuditStatus.auditing
           : releaseState == HuaweiReleaseState.upgradeAuditFailed
           ? AuditStatus.auditFailed
@@ -115,7 +128,11 @@ class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
   }) async {
     var result = await _dio.get(
       "/publish/v2/upload-url/for-obs",
-      queryParameters: {"appId": initConfig.appId, "fileName": fileName, "contentLength": contentLength},
+      queryParameters: {
+        "appId": initConfig.appId,
+        "fileName": fileName,
+        "contentLength": contentLength,
+      },
     );
     var urlInfo = result.data["urlInfo"];
     String url = urlInfo["url"];
@@ -125,16 +142,26 @@ class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
 
     print(result.data.toString());
     //{"ret":{"code":0,"msg":"success"},"urlInfo":{"objectId":"CN/2025120111/1764589669963-d0cab5d5-46c0-417b-a14f-428fe0542c41.apk","url":"https://nsp-appgallery-agcfs-drcn.obs.cn-north-2.myhuaweicloud.cn/CN/2025120111/1764589669963-d0cab5d5-46c0-417b-a14f-428fe0542c41.apk","method":"PUT","headers":{"Authorization":"AWS4-HMAC-SHA256 Credential=HPUAD4DHWFBMSLSTBETK/20251201/cn-north-2/s3/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-content-sha256;x-amz-date, Signature=7ba8cfde7297821bed4aaff571be6550c9f637c26a5dd6e689791163420b106b","x-amz-content-sha256":"UNSIGNED-PAYLOAD","x-amz-date":"20251201T114749Z","Host":"nsp-appgallery-agcfs-drcn.obs.cn-north-2.myhuaweicloud.cn","user-agent":"Apache-HttpClient/4.5.14 (Java/1.8.0_402)","Content-Type":"application/octet-stream"}}}
-    return HuaweiUploadUrlOptions(objectId: objectId, url: url, method: method, headers: headers);
+    return HuaweiUploadUrlOptions(
+      objectId: objectId,
+      url: url,
+      method: method,
+      headers: headers,
+    );
   }
 
   /// 执行文件上传
   Future<String> uploadFile({required String filePath}) async {
     var fileName = File(filePath).path.split("/").last;
     var contentLength = File(filePath).lengthSync();
-    var uploadOptions = await getUploadOptions(fileName: fileName, contentLength: contentLength);
+    var uploadOptions = await getUploadOptions(
+      fileName: fileName,
+      contentLength: contentLength,
+    );
     var tempDio = Dio();
-    tempDio.interceptors.add(LogInterceptor(requestBody: false, responseBody: true));
+    tempDio.interceptors.add(
+      LogInterceptor(requestBody: false, responseBody: true),
+    );
     tempDio.options.contentType = "application/octet-stream";
     uploadOptions.headers.forEach((key, value) {
       tempDio.options.headers[key] = value;
@@ -198,18 +225,26 @@ class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
     var result = await _dio.put(
       "/publish/v2/app-file-info",
       queryParameters: {"appId": initConfig.appId},
-      data: {"fileType": HuaweiPublishFileType.screenshot.fileType, "files": screenshotFiles},
+      data: {
+        "fileType": HuaweiPublishFileType.screenshot.fileType,
+        "files": screenshotFiles,
+      },
     );
   }
- 
+
   publishApp({int releaseType = 1}) async {
     //{ret: {code: 204144727, msg: [AppGalleryConnectPublishService]The package is being compiled, please try again in 3-5 minutes}}
     //上传完apk包之后需要延时一段时间再调用,或者循环
-    var result = await _dio.post(
-      "/publish/v2/app-submit",
-      queryParameters: {"releaseType": releaseType, "appId": initConfig.appId},
-    );
-    print(result.data.toString());
+    await Future.delayed(Duration(seconds: 20)).then((v) async {
+      var result = await _dio.post(
+        "/publish/v2/app-submit",
+        queryParameters: {
+          "releaseType": releaseType,
+          "appId": initConfig.appId,
+        },
+      );
+      print(result.data.toString());
+    });
   }
 
   @override
@@ -249,15 +284,20 @@ class HuaweiInterceptor extends Interceptor {
   _checkAccessToken() async {
     if (HuaweiManager().initConfig.accessToken == "" ||
         HuaweiManager().initConfig.expiresAt <= 0 ||
-        DateTime.now().millisecondsSinceEpoch > HuaweiManager().initConfig.expiresAt) {
+        DateTime.now().millisecondsSinceEpoch >
+            HuaweiManager().initConfig.expiresAt) {
       await HuaweiManager().getToken();
     }
   }
 
   @override
-  Future<void> onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
+  Future<void> onRequest(
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) async {
     await _checkAccessToken();
-    options.headers["Authorization"] = "Bearer ${HuaweiManager().initConfig.accessToken}";
+    options.headers["Authorization"] =
+        "Bearer ${HuaweiManager().initConfig.accessToken}";
     options.headers["client_id"] = HuaweiManager().initConfig.clientId;
     handler.next(options);
   }
@@ -314,6 +354,7 @@ enum HuaweiReleaseState {
 
 class HuaweiUploadInfo {
   HuaweiUploadInfo({required this.fileDestUrl, required this.fileName});
+
   //文件在文件服务器中的对象ID
   String fileDestUrl;
   String fileName;
@@ -326,6 +367,7 @@ class HuaweiUploadUrlOptions {
     required this.method,
     required this.headers,
   });
+
   String objectId;
   String url;
   String method;
@@ -339,11 +381,13 @@ enum HuaweiPublishFileType {
   apk(5);
 
   final int fileType;
+
   const HuaweiPublishFileType(this.fileType);
 }
 
 class HuaweiFileInfoV2 {
   HuaweiFileInfoV2({required this.fileName, required this.fileDestUrl});
+
   String fileName;
   String fileDestUrl;
 }
