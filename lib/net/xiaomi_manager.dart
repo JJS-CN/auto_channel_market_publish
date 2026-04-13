@@ -159,10 +159,11 @@ class XiaomiManager extends BasicChannelManager<XiaomiConfig> {
 
   @override
   Future<bool> startPublish(UpdateConfig updateConfig) async {
-    var apkPath = initConfig.uploadApkInfo?.apkPath;
+    var apkPath = initConfig.uploadApkInfo!.uploadApkPath;
+
     var apkInfo = await _queryApkConfig();
 
-    var _ = await publish(
+     await publish(
       synchroType: XiaomiSynchroType.apkUpdate,
       appName: apkInfo.packageInfo!.appName,
       apkPath: apkPath,

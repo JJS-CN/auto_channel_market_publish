@@ -7,8 +7,10 @@ import 'package:auto_channel_market_publish/screen/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:go_router/go_router.dart';
+import 'package:talker_flutter/talker_flutter.dart';
 
 import 'const/screen_const.dart';
+Talker talker =Talker();
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

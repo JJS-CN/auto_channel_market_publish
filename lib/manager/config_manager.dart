@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:auto_channel_market_publish/main.dart';
 import 'package:auto_channel_market_publish/manager/sp_manager.dart';
 import 'package:auto_channel_market_publish/model/channel_config.dart';
 import 'package:auto_channel_market_publish/model/enums.dart';
@@ -16,7 +17,8 @@ class ConfigManager {
   StreamController<List<ProjectConfig>> projectConfigStream =
       StreamController<List<ProjectConfig>>.broadcast();
 
-  StreamController<bool> isPublishReadyStream = StreamController<bool>.broadcast();
+  StreamController<bool> isPublishReadyStream =
+      StreamController<bool>.broadcast();
 
   List<ProjectConfig> projectConfigs = <ProjectConfig>[];
 
@@ -25,8 +27,11 @@ class ConfigManager {
   ///加载本地所有配置
   loadLocalConfig() async {
     var value = SpManager.getStringList("projectConfigs");
-    projectConfigs = value.map((e) => ProjectConfig.fromJson(json.decode(e))).toList();
-    _curProject = projectConfigs.firstOrNull ?? ProjectConfig.defaultProjectConfig();
+    projectConfigs = value
+        .map((e) => ProjectConfig.fromJson(json.decode(e)))
+        .toList();
+    _curProject =
+        projectConfigs.firstOrNull ?? ProjectConfig.defaultProjectConfig();
     checkAllAuditStatus();
   }
 
@@ -34,7 +39,8 @@ class ConfigManager {
   saveLocalConfigForDisk(String value) async {
     var list = json.decode(value) as List<dynamic>;
     projectConfigs = list.map((e) => ProjectConfig.fromJson(e)).toList();
-    _curProject = projectConfigs.firstOrNull ?? ProjectConfig.defaultProjectConfig();
+    _curProject =
+        projectConfigs.firstOrNull ?? ProjectConfig.defaultProjectConfig();
     saveToDisk();
     await checkAllAuditStatus();
   }
@@ -42,14 +48,19 @@ class ConfigManager {
   ///保存当前项目到磁盘
   saveToDisk() {
     var list = projectConfigs.map((e) => e.toJson()).toList();
-    SpManager.setStringList("projectConfigs", list.map((e) => json.encode(e)).toList());
+    SpManager.setStringList(
+      "projectConfigs",
+      list.map((e) => json.encode(e)).toList(),
+    );
     //通知所有监听者
     projectConfigStream.sink.add(projectConfigs);
   }
 
   ///新增项目
   addProject(ProjectConfig projectConfig) {
-    var maxId = projectConfigs.isEmpty ? 0 : projectConfigs.map((e) => e.id).reduce((a, b) => a > b ? a : b);
+    var maxId = projectConfigs.isEmpty
+        ? 0
+        : projectConfigs.map((e) => e.id).reduce((a, b) => a > b ? a : b);
     projectConfig.id = maxId + 1;
     projectConfigs.add(projectConfig);
     saveToDisk();
@@ -58,13 +69,16 @@ class ConfigManager {
   ///删除项目
   deleteProject(ProjectConfig projectConfig) {
     projectConfigs.removeWhere((element) => element.id == projectConfig.id);
-    _curProject = projectConfigs.firstOrNull ?? ProjectConfig.defaultProjectConfig();
+    _curProject =
+        projectConfigs.firstOrNull ?? ProjectConfig.defaultProjectConfig();
     saveToDisk();
   }
 
   ///更新项目
   updateProject(ProjectConfig projectConfig) {
-    var index = projectConfigs.indexWhere((element) => element.id == projectConfig.id);
+    var index = projectConfigs.indexWhere(
+      (element) => element.id == projectConfig.id,
+    );
     if (index == -1) {
       return;
     }
@@ -131,25 +145,37 @@ class ConfigManager {
   }
 
   ///执行apk更新发布
-  Future<bool> startApkPublish(Function(BaseChannelConfig channelConfig) onPublishNotify) async {
+  Future<bool> startApkPublish(
+    Function(BaseChannelConfig channelConfig) onPublishNotify,
+  ) async {
     var allChannelConfigs = _curProject.allChannelConfigs();
     //剔除线上>=本次版本号渠道
     allChannelConfigs.removeWhere(
       (channelConfig) =>
-          (channelConfig.auditInfo?.releaseVersionCode ?? 0) >= _curProject.updateConfig.versionCode,
+          (channelConfig.auditInfo?.releaseVersionCode ?? 0) >=
+          _curProject.updateConfig.versionCode,
     );
     //剔除正在审核中的渠道
     allChannelConfigs.removeWhere(
-      (channelConfig) => channelConfig.auditInfo?.auditStatus == AuditStatus.auditing,
+      (channelConfig) =>
+          channelConfig.auditInfo?.auditStatus == AuditStatus.auditing,
     );
-
-    await Future.wait(
-      allChannelConfigs.map((channelConfig) async {
+    await Future.forEach(allChannelConfigs, (channelConfig) async {
+      try {
         await channelConfig.bindManager.startPublish(_curProject.updateConfig);
-        onPublishNotify.call(channelConfig);
-        return Future.value(true);
-      }),
-    );
+      } catch (e) {
+        talker.error(channelConfig.channel, e);
+      }
+      onPublishNotify.call(channelConfig);
+    });
+    //全部执行完之后,再执行一次状态检查
+    await Future.forEach(allChannelConfigs, (channelConfig) async {
+      try {
+        await channelConfig.bindManager.checkAuditStats();
+      } catch (e) {
+        talker.error(channelConfig.channel, e);
+      }
+    });
     return true;
   }
 
@@ -171,11 +197,13 @@ class ConfigManager {
     //剔除线上>=本次版本号渠道
     allChannelConfigs.removeWhere(
       (channelConfig) =>
-          (channelConfig.auditInfo?.releaseVersionCode ?? 0) >= _curProject.updateConfig.versionCode,
+          (channelConfig.auditInfo?.releaseVersionCode ?? 0) >=
+          _curProject.updateConfig.versionCode,
     );
     //剔除正在审核中的渠道
     allChannelConfigs.removeWhere(
-      (channelConfig) => channelConfig.auditInfo?.auditStatus == AuditStatus.auditing,
+      (channelConfig) =>
+          channelConfig.auditInfo?.auditStatus == AuditStatus.auditing,
     );
     //检查剩余渠道数量
     if (allChannelConfigs.isEmpty) {
@@ -192,7 +220,9 @@ class ConfigManager {
       allChannelConfigs.forEach((channelConfig) {
         if (element.path.contains(channelConfig.channel.name) &&
             element.path.contains(channelConfig.packageName) &&
-            element.path.contains(_curProject.updateConfig.versionCode.toString())) {
+            element.path.contains(
+              _curProject.updateConfig.versionCode.toString(),
+            )) {
           //渠道号匹配上,说明是这个渠道包的
           if (element.path.endsWith(".apk")) {
             if (element.path.contains("all")) {
@@ -214,11 +244,15 @@ class ConfigManager {
     });
     // 方案A: 从目录筛选渠道包
     var apkEmptyList = allChannelConfigs
-        .where((channelConfig) => channelConfig.uploadApkInfo?.isAllEmpty == true)
+        .where(
+          (channelConfig) => channelConfig.uploadApkInfo?.isAllEmpty == true,
+        )
         .toList();
 
     if (apkEmptyList.isNotEmpty) {
-      SmartDialog.showToast("${apkEmptyList.map((e) => e.channel.name).join(",")}的apk包未找到");
+      SmartDialog.showToast(
+        "${apkEmptyList.map((e) => e.channel.name).join(",")}的apk包未找到",
+      );
       return false;
     }
     //检查线上
@@ -228,7 +262,8 @@ class ConfigManager {
   ///重置渠道管理器初始化配置(项目切换,项目删除,项目新增,渠道修改后需要重置)
   ///因为太多位置,所以在使用接口相关功能时调用一次比较好
   _resetInitConfigs({List<BaseChannelConfig>? configs}) {
-    List<BaseChannelConfig> channelConfigs = configs ?? _curProject.allChannelConfigs();
+    List<BaseChannelConfig> channelConfigs =
+        configs ?? _curProject.allChannelConfigs();
     for (var channelConfig in channelConfigs) {
       channelConfig.bindManager.init(channelConfig);
     }

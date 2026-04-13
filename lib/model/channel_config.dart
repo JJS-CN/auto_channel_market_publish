@@ -24,12 +24,16 @@ class UpdateConfig {
     this.iconPath = "",
     this.screenshotPaths = const [],
   });
+
   int versionCode;
+
   // String desc;
   // String brief;
   String updateDesc;
+
   //新的图标路径
   String iconPath;
+
   //新的截图路径列表
   List<String> screenshotPaths;
 
@@ -42,7 +46,9 @@ class UpdateConfig {
     return true;
   }
 
-  factory UpdateConfig.fromJson(Map<String, dynamic> json) => _$UpdateConfigFromJson(json);
+  factory UpdateConfig.fromJson(Map<String, dynamic> json) =>
+      _$UpdateConfigFromJson(json);
+
   Map<String, dynamic> toJson() => _$UpdateConfigToJson(this);
 }
 
@@ -65,12 +71,37 @@ class ProjectConfig {
   static ProjectConfig defaultProjectConfig() {
     return ProjectConfig(
       updateConfig: UpdateConfig(),
-      xiaomiConfig: XiaomiConfig(packageName: "", userName: "", publicPem: "", privateKey: ""),
-      huaweiConfig: HuaweiConfig(packageName: "", appId: "", clientId: "", clientSecret: ""),
-      honorConfig: HonorConfig(packageName: "", appId: "", clientId: "", clientSecret: ""),
-      vivoConfig: VivoConfig(packageName: "", access_key: "", accessSecret: "", appId: ""),
+      xiaomiConfig: XiaomiConfig(
+        packageName: "",
+        userName: "",
+        publicPem: "",
+        privateKey: "",
+      ),
+      huaweiConfig: HuaweiConfig(
+        packageName: "",
+        appId: "",
+        clientId: "",
+        clientSecret: "",
+      ),
+      honorConfig: HonorConfig(
+        packageName: "",
+        appId: "",
+        clientId: "",
+        clientSecret: "",
+      ),
+      vivoConfig: VivoConfig(
+        packageName: "",
+        access_key: "",
+        accessSecret: "",
+        appId: "",
+      ),
       oppoConfig: OppoConfig(packageName: "", client_id: "", client_secret: ""),
-      tencentConfig: TencentConfig(packageName: "", appId: "", userId: "", secretKey: ""),
+      tencentConfig: TencentConfig(
+        packageName: "",
+        appId: "",
+        userId: "",
+        secretKey: "",
+      ),
     );
   }
 
@@ -171,7 +202,9 @@ class ProjectConfig {
     return true;
   }
 
-  factory ProjectConfig.fromJson(Map<String, dynamic> json) => _$ProjectConfigFromJson(json);
+  factory ProjectConfig.fromJson(Map<String, dynamic> json) =>
+      _$ProjectConfigFromJson(json);
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'appName': appName,
@@ -195,7 +228,8 @@ class XiaomiConfig extends BaseChannelConfig {
     required this.privateKey,
     super.packageName,
     super.channel = ChannelEnum.xiaomi,
-    super.noteUrl = "https://dev.mi.com/xiaomihyperos/documentation/detail?pId=1134",
+    super.noteUrl =
+        "https://dev.mi.com/xiaomihyperos/documentation/detail?pId=1134",
     super.uploadApkInfo,
     super.auditInfo,
   });
@@ -206,7 +240,10 @@ class XiaomiConfig extends BaseChannelConfig {
 
   @override
   bool get isComplete =>
-      packageName.isNotEmpty && userName.isNotEmpty && publicPem.isNotEmpty && privateKey.isNotEmpty;
+      packageName.isNotEmpty &&
+      userName.isNotEmpty &&
+      publicPem.isNotEmpty &&
+      privateKey.isNotEmpty;
 
   @override
   BasicChannelManager get bindManager => XiaomiManager();
@@ -216,8 +253,11 @@ class XiaomiConfig extends BaseChannelConfig {
     return 'XiaomiConfig(packageName: $packageName, userName: $userName, publicPem: $publicPem, privateKey: $privateKey)';
   }
 
-  factory XiaomiConfig.fromJson(Map<String, dynamic> json) => _$XiaomiConfigFromJson(json);
-  Map<String, dynamic> toJson() => _$XiaomiConfigToJson(this)..["auditInfo"] = auditInfo?.toJson() ?? {};
+  factory XiaomiConfig.fromJson(Map<String, dynamic> json) =>
+      _$XiaomiConfigFromJson(json);
+
+  Map<String, dynamic> toJson() =>
+      _$XiaomiConfigToJson(this)..["auditInfo"] = auditInfo?.toJson() ?? {};
 }
 
 @JsonSerializable()
@@ -232,6 +272,7 @@ class HonorConfig extends BaseChannelConfig {
     super.channel = ChannelEnum.honor,
     super.noteUrl = "https://developer.honor.com/cn/doc/guides/101359",
   });
+
   String clientId;
   String clientSecret;
   String appId;
@@ -239,13 +280,17 @@ class HonorConfig extends BaseChannelConfig {
   int expiresAt;
 
   @override
-  bool get isComplete => clientId.isNotEmpty && clientSecret.isNotEmpty && appId.isNotEmpty;
+  bool get isComplete =>
+      clientId.isNotEmpty && clientSecret.isNotEmpty && appId.isNotEmpty;
 
   @override
   BasicChannelManager get bindManager => HonorManager();
 
-  factory HonorConfig.fromJson(Map<String, dynamic> json) => _$HonorConfigFromJson(json);
-  Map<String, dynamic> toJson() => _$HonorConfigToJson(this)..["auditInfo"] = auditInfo?.toJson() ?? {};
+  factory HonorConfig.fromJson(Map<String, dynamic> json) =>
+      _$HonorConfigFromJson(json);
+
+  Map<String, dynamic> toJson() =>
+      _$HonorConfigToJson(this)..["auditInfo"] = auditInfo?.toJson() ?? {};
 }
 
 @JsonSerializable()
@@ -261,6 +306,7 @@ class HuaweiConfig extends BaseChannelConfig {
     super.noteUrl =
         "https://developer.huawei.com/consumer/cn/doc/AppGallery-connect-References/agcapi-app-submit-0000001158245061",
   });
+
   String clientId;
   String clientSecret;
   String appId;
@@ -268,13 +314,17 @@ class HuaweiConfig extends BaseChannelConfig {
   int expiresAt;
 
   @override
-  bool get isComplete => clientId.isNotEmpty && clientSecret.isNotEmpty && appId.isNotEmpty;
+  bool get isComplete =>
+      clientId.isNotEmpty && clientSecret.isNotEmpty && appId.isNotEmpty;
 
   @override
   BasicChannelManager get bindManager => HuaweiManager();
 
-  factory HuaweiConfig.fromJson(Map<String, dynamic> json) => _$HuaweiConfigFromJson(json);
-  Map<String, dynamic> toJson() => _$HuaweiConfigToJson(this)..["auditInfo"] = auditInfo?.toJson() ?? {};
+  factory HuaweiConfig.fromJson(Map<String, dynamic> json) =>
+      _$HuaweiConfigFromJson(json);
+
+  Map<String, dynamic> toJson() =>
+      _$HuaweiConfigToJson(this)..["auditInfo"] = auditInfo?.toJson() ?? {};
 }
 
 @JsonSerializable()
@@ -294,13 +344,19 @@ class VivoConfig extends BaseChannelConfig {
 
   @override
   bool get isComplete =>
-      access_key.isNotEmpty && accessSecret.isNotEmpty && packageName.isNotEmpty && appId.isNotEmpty;
+      access_key.isNotEmpty &&
+      accessSecret.isNotEmpty &&
+      packageName.isNotEmpty &&
+      appId.isNotEmpty;
 
   @override
   BasicChannelManager get bindManager => VivoManager();
 
-  factory VivoConfig.fromJson(Map<String, dynamic> json) => _$VivoConfigFromJson(json);
-  Map<String, dynamic> toJson() => _$VivoConfigToJson(this)..["auditInfo"] = auditInfo?.toJson() ?? {};
+  factory VivoConfig.fromJson(Map<String, dynamic> json) =>
+      _$VivoConfigFromJson(json);
+
+  Map<String, dynamic> toJson() =>
+      _$VivoConfigToJson(this)..["auditInfo"] = auditInfo?.toJson() ?? {};
 }
 
 @JsonSerializable()
@@ -312,21 +368,29 @@ class OppoConfig extends BaseChannelConfig {
     required this.client_secret,
     super.packageName,
     super.channel = ChannelEnum.oppo,
-    super.noteUrl = "https://open.oppomobile.com/documentation/page/info?id=10998",
+    super.noteUrl =
+        "https://open.oppomobile.com/documentation/page/info?id=10998",
   });
+
   String access_token;
   int expires_at;
   String client_id;
   String client_secret;
 
   @override
-  bool get isComplete => client_id.isNotEmpty && client_secret.isNotEmpty && packageName.isNotEmpty;
+  bool get isComplete =>
+      client_id.isNotEmpty &&
+      client_secret.isNotEmpty &&
+      packageName.isNotEmpty;
 
   @override
   BasicChannelManager get bindManager => OppoManager();
 
-  factory OppoConfig.fromJson(Map<String, dynamic> json) => _$OppoConfigFromJson(json);
-  Map<String, dynamic> toJson() => _$OppoConfigToJson(this)..["auditInfo"] = auditInfo?.toJson() ?? {};
+  factory OppoConfig.fromJson(Map<String, dynamic> json) =>
+      _$OppoConfigFromJson(json);
+
+  Map<String, dynamic> toJson() =>
+      _$OppoConfigToJson(this)..["auditInfo"] = auditInfo?.toJson() ?? {};
 }
 
 @JsonSerializable()
@@ -339,6 +403,7 @@ class TencentConfig extends BaseChannelConfig {
     super.channel = ChannelEnum.tencent,
     super.noteUrl = "https://wikinew.open.qq.com/index.html#/iwiki/4015262492",
   });
+
   String appId;
   String userId;
   String secretKey;
@@ -353,8 +418,11 @@ class TencentConfig extends BaseChannelConfig {
   @override
   BasicChannelManager get bindManager => TencentManager();
 
-  factory TencentConfig.fromJson(Map<String, dynamic> json) => _$TencentConfigFromJson(json);
-  Map<String, dynamic> toJson() => _$TencentConfigToJson(this)..["auditInfo"] = auditInfo?.toJson() ?? {};
+  factory TencentConfig.fromJson(Map<String, dynamic> json) =>
+      _$TencentConfigFromJson(json);
+
+  Map<String, dynamic> toJson() =>
+      _$TencentConfigToJson(this)..["auditInfo"] = auditInfo?.toJson() ?? {};
 }
 
 abstract class BaseChannelConfig {
@@ -366,6 +434,7 @@ abstract class BaseChannelConfig {
     this.auditInfo,
     this.uploadApkInfo,
   });
+
   ChannelEnum channel;
   String packageName;
 
@@ -391,13 +460,19 @@ abstract class BaseChannelConfig {
 @JsonSerializable()
 class UploadApkInfo {
   UploadApkInfo({this.apkPath = "", this.apkPath32 = "", this.apkPath64 = ""});
+
   String apkPath;
   String apkPath32;
   String apkPath64;
 
-  bool get isAllEmpty => apkPath.isEmpty && apkPath32.isEmpty && apkPath64.isEmpty;
+  bool get isAllEmpty =>
+      apkPath.isEmpty && apkPath32.isEmpty && apkPath64.isEmpty;
 
-  factory UploadApkInfo.fromJson(Map<String, dynamic> json) => _$UploadApkInfoFromJson(json);
+  String get uploadApkPath => apkPath.isNotEmpty ? apkPath : apkPath64;
+
+  factory UploadApkInfo.fromJson(Map<String, dynamic> json) =>
+      _$UploadApkInfoFromJson(json);
+
   Map<String, dynamic> toJson() => _$UploadApkInfoToJson(this);
 }
 
@@ -411,14 +486,19 @@ class AuditInfo {
     this.auditReason = "",
     this.checkUpdateTime = 0,
   });
+
   int releaseVersionCode;
   int versionCode;
   AuditStatus auditStatus;
+
   //审核意见
   String auditReason;
+
   //上次检查接口状态时间
   int checkUpdateTime;
 
-  factory AuditInfo.fromJson(Map<String, dynamic> json) => _$AuditInfoFromJson(json);
+  factory AuditInfo.fromJson(Map<String, dynamic> json) =>
+      _$AuditInfoFromJson(json);
+
   Map<String, dynamic> toJson() => _$AuditInfoToJson(this);
 }

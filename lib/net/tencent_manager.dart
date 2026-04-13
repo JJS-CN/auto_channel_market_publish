@@ -156,7 +156,9 @@ class TencentManager extends BasicChannelManager<TencentConfig> {
       SmartDialog.showToast("审核中", displayType: SmartToastType.onlyRefresh);
       return false;
     }
-    var filePath = initConfig.uploadApkInfo?.apkPath;
+    ///{ret: 4000045, msg: 解析校验32位或32&64位兼容包失败，请查证后重试}
+    ///必须是上传兼容包
+    var filePath = initConfig.uploadApkInfo?.uploadApkPath;
     var _ = await queryApkConfig();
     if (filePath == null) {
       return false;

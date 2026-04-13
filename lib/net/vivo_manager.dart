@@ -133,7 +133,7 @@ class VivoManager extends BasicChannelManager<VivoConfig> {
 
   @override
   Future<bool> startPublish(UpdateConfig updateConfig) async {
-    var apkPath = initConfig.uploadApkInfo?.apkPath;
+    var apkPath = initConfig.uploadApkInfo?.uploadApkPath;
 
     var appInfo = await queryAppInfo();
     var status = appInfo["status"];

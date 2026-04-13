@@ -245,7 +245,7 @@ class HonorManager extends BasicChannelManager<HonorConfig> {
         newFeature: newFeature,
       );
     });
-    var filePath = initConfig.uploadApkInfo?.apkPath;
+    var filePath = initConfig.uploadApkInfo?.uploadApkPath;
     var _ = await uploadFile(filePath: filePath!, fileType: 100);
     var _ = await publishApp(releaseType: 1);
     return true;

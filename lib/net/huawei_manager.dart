@@ -203,6 +203,8 @@ class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
   }
  
   publishApp({int releaseType = 1}) async {
+    //{ret: {code: 204144727, msg: [AppGalleryConnectPublishService]The package is being compiled, please try again in 3-5 minutes}}
+    //上传完apk包之后需要延时一段时间再调用,或者循环
     var result = await _dio.post(
       "/publish/v2/app-submit",
       queryParameters: {"releaseType": releaseType, "appId": initConfig.appId},
@@ -225,6 +227,7 @@ class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
 
   @override
   Future<bool> startPublish(UpdateConfig updateConfig) async {
+    print("开始华为发布");
     var _ = await queryApkInfo();
     if (initConfig.auditInfo?.auditStatus == AuditStatus.auditing) {
       SmartDialog.showToast("审核中", displayType: SmartToastType.onlyRefresh);
@@ -234,7 +237,7 @@ class HuaweiManager extends BasicChannelManager<HuaweiConfig> {
     await publishIconInfo(filePath: updateConfig.iconPath);
     await publishScreenshotInfos(filePathList: updateConfig.screenshotPaths);
 
-    var apkPath = initConfig.uploadApkInfo?.apkPath;
+    var apkPath = initConfig.uploadApkInfo?.uploadApkPath;
     await publishApkInfo(filePath: apkPath!);
     var _ = await publishApp(releaseType: 1);
 
